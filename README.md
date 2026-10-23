@@ -13,6 +13,7 @@ O Sand Web Video Editor é um aplicativo de edição de vídeo feito para rodar 
 * Permite a alterar as propriedades do item selecionado de timeline com diversas opções
 * Permite a exportar o projeto em vídeo em MP4 com resoluções de 480p, 720p ou 1080p
 * A renderização de vídeo é feita através de FFMpeg
+* Funciona em desktops, notebooks, smartphones e tablets. Mas o uso de desktops e notebooks é recomendável
 
 # Demonstração de Vídeo feito em Sand Web Video Editor
 
