@@ -67,6 +67,7 @@ public sealed class TimelineRenderer
                     .WithVideoCodec(VideoCodec.LibX264)
                     .WithConstantRateFactor(23)
                     .WithSpeedPreset(Speed.VeryFast)
+                    .UsingThreads(1)
                     .WithAudioCodec(AudioCodec.Aac)
                     .WithFastStart()
                     .WithCustomArgument(string.Format(inv, "-pix_fmt yuv420p -r {0} -b:a 192k -t {1:0.###}", fps, plan.TotalDuration)))
