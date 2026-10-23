@@ -23,7 +23,9 @@ jobs:
           dotnet-version: '10.0.x' # Ajuste para a versão do .NET que você está usando (ex: 8.0 ou 9.0)
 
       - name: Publicar o Blazor WebAssembly
-        run: dotnet publish SandWebVideoEditor.Cliente/SandWebVideoEditor.Cliente.csproj -c Release -o release
+        run: |
+          PROJECT_PATH=$(find . -name "SandWebVideoEditor.Client.csproj")
+          dotnet publish $PROJECT_PATH -c Release -o release
 
       - name: Ajustar para o GitHub Pages (Adicionar .nojekyll)
         run: touch release/wwwroot/.nojekyll
