@@ -18,7 +18,7 @@ O Sand Web Video Editor é um aplicativo de edição de vídeo feito para rodar 
 
 https://github.com/user-attachments/assets/34ecfeea-9863-4c85-9125-437f803f4d00
 
-# Créditos
+## Créditos
 
 Rise by Corporate Music Zone | https://corporate-music-zone.bandcamp.com
 
