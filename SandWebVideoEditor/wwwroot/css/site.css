@@ -1,0 +1,144 @@
+html {
+  font-size: 14px;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+.btn:focus,
+.btn:active:focus,
+.btn-link.nav-link:focus,
+.form-control:focus,
+.form-check-input:focus {
+  box-shadow:
+    0 0 0 0.1rem white,
+    0 0 0 0.25rem #258cfb;
+}
+
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+body {
+  margin-bottom: 60px;
+  background: #474747;
+  background: linear-gradient(
+    153deg,
+    rgba(71, 71, 71, 1) 0%,
+    rgba(150, 150, 150, 1) 78%
+  );
+}
+
+.form-floating > .form-control-plaintext::placeholder,
+.form-floating > .form-control::placeholder {
+  color: var(--bs-secondary-color);
+  text-align: end;
+}
+
+.form-floating > .form-control-plaintext:focus::placeholder,
+.form-floating > .form-control:focus::placeholder {
+  text-align: start;
+}
+
+.editor-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(0, 2fr);
+  grid-template-rows: minmax(0, 1fr) 180px;
+  gap: 12px;
+  width: 100vw;
+  height: calc(100dvh - 132px);
+  min-height: 360px;
+  margin-left: calc(50% - 50vw);
+}
+
+#collection,
+#videoplayer,
+#timeline {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  border-style: solid;
+  border-width: 2px;
+}
+
+#videoplayer {
+  display: grid;
+  place-items: center;
+}
+
+#video-player {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+#timeline {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 600px) {
+  .editor-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(220px, 1fr) minmax(220px, 1fr) 180px;
+    height: auto;
+    min-height: calc(100dvh - 132px);
+  }
+
+  #timeline {
+    grid-column: 1;
+  }
+}
+
+.track-container {
+  position: relative;
+  background-color: #4f5861;
+  border-radius: 4px;
+  min-height: 50px;
+  overflow-x: auto;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.timeline-item {
+  position: absolute;
+  top: 5px;
+  height: 40px;
+  border-radius: 4px;
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  font-size: 12px;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  z-index: 2;
+}
+
+.timeline-item:active {
+  cursor: grabbing;
+}
+
+.timeline-item.selected {
+  outline: 2px solid #ffc107;
+  box-shadow: 0 0 8px rgba(255, 193, 7, 0.8);
+}
+
+.resize-handle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 10px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.4);
+  cursor: e-resize;
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
+.resize-handle:hover {
+  background: rgba(255, 255, 255, 0.8);
+}

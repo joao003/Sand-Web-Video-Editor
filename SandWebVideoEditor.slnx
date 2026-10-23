@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="SandWebVideoEditor.Client/SandWebVideoEditor.Client.csproj" />
+  <Project Path="SandWebVideoEditor/SandWebVideoEditor.csproj" />
+</Solution>
