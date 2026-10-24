@@ -1,0 +1,42 @@
+name: Deploy Blazor WebAssembly to GitHub Pages
+
+on:
+  push:
+    branches: [ "main" ] # Ou "master", dependendo da sua branch principal
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar o SDK do .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x' # Ajuste para a versão do .NET que você está usando (ex: 8.0 ou 9.0)
+
+      - name: Publicar o Blazor WebAssembly
+        run: |
+          PROJECT_PATH=$(find . -name "SandWebVideoEditor.Client.csproj")
+          dotnet publish $PROJECT_PATH -c Release -o release
+
+      - name: Ajustar para o GitHub Pages (Adicionar .nojekyll)
+        run: touch release/wwwroot/.nojekyll
+
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@v4
+
+      - name: Enviar artefato para o Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'release/wwwroot'
+
+      - name: Realizar Deploy no GitHub Pages
+        uses: actions/deploy-pages@v4
