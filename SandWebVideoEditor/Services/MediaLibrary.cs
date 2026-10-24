@@ -1,16 +1,21 @@
-using System.Text.Json;
+using System.Collections.Concurrent;
+using System.Security.Cryptography.X509Certificates;
 using FFMpegCore;
+using Microsoft.AspNetCore.Components.Web;
 using SandWebVideoEditor.Models;
 
 namespace SandWebVideoEditor.Services;
 
 public interface IMediaLibrary
 {
-    IReadOnlyList<MediaAsset> List();
-    MediaAsset? Get(string? id);
+    IReadOnlyList<MediaAsset> List(string sessionId);
+    MediaAsset? Get(string sessionId, string? id);
     string PathOf(MediaAsset asset);
-    Task<MediaAsset> AddAsync(IFormFile file, CancellationToken ct = default);
-    bool Delete(string id);
+    Task<MediaAsset> AddAsync(string sessionId, IFormFile file, string? restoreId = null, CancellationToken ct = default);
+    bool Delete(string sessionId, string id);
+    int Ping(string sessionId);
+    void EndSession(string sessionId);
+    int PurgeIdle(TimeSpan idle);
 }
 
 public sealed class MediaLibrary : IMediaLibrary
@@ -19,53 +24,98 @@ public sealed class MediaLibrary : IMediaLibrary
     private static readonly HashSet<string> AudioExt = new(StringComparer.OrdinalIgnoreCase) { ".mp3", ".wav", ".m4a", ".aac", ".ogg" };
     private static readonly HashSet<string> ImageExt = new(StringComparer.OrdinalIgnoreCase) { ".png", ".jpg", ".jpeg", ".webp", ".bmp" };
     private const long MaxImagePixels = 100_000_000;
-    private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
+    private sealed class Session
+    {
+        public readonly object Lock = new();
+        public readonly List<MediaAsset> Assets = new();
+        public readonly HashSet<string> Pending = new();
+        public long LastSeenTicks = DateTime.UtcNow.Ticks;
+        public bool Ended;
+    }
 
-    private readonly string _folder;
-    private readonly string _indexFile;
-    private readonly object _lock = new();
-    private readonly List<MediaAsset> _assets;
+    private readonly string _root;
+    private readonly ConcurrentDictionary<string, Session> _sessions = new();
+
 
     public MediaLibrary(IWebHostEnvironment env)
     {
-        _folder = Path.Combine(env.WebRootPath, "uploads");
-        Directory.CreateDirectory(_folder);
-        var appData = Path.Combine(env.ContentRootPath, "App_Data");
-        Directory.CreateDirectory(appData);
-        _indexFile = Path.Combine(appData, "media.json");
+        _root = Path.Combine(env.WebRootPath, "uploads");
+        Directory.CreateDirectory(_root);
 
-        _assets = File.Exists(_indexFile)
-            ? JsonSerializer.Deserialize<List<MediaAsset>>(File.ReadAllText(_indexFile)) ?? new()
-            : new();
-        _assets.RemoveAll(a => !File.Exists(Path.Combine(_folder, a.StoredName)));   // arquivo sumiu do disco
+        foreach (var dir in Directory.GetDirectories(_root))
+        {
+            DeleteFolder(dir);
+        }
+
+        foreach (var file in Directory.GetFiles(_root))
+        {
+            if (!Path.GetFileName(file).StartsWith('.'))
+            {
+                TryDelete(file);
+            }
+        }
+        TryDelete(Path.Combine(env.ContentRootPath, "App_Data", "media.json"));
     }
 
-    public IReadOnlyList<MediaAsset> List() { lock (_lock) return _assets.ToList(); }
+    public static bool IsValidId(string? s)
+        => s is { Length: 32 } && s.All(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'));
+    
+    public IReadOnlyList<MediaAsset> List(string sessionId)
+    {
+        var s = Find(sessionId, touch: true);
+        if (s == null) return Array.Empty<MediaAsset>();
+        lock (s.Lock) return s.Assets.ToList();
+    }
 
-    public MediaAsset? Get(string? id)
+    public MediaAsset? Get(string sessionId, string? id)
     {
         if (string.IsNullOrEmpty(id)) return null;
-        lock (_lock) return _assets.FirstOrDefault(a => a.Id == id);
+        var s = Find(sessionId, touch: false);
+        if (s == null)
+        {
+            return null;
+        }
+        lock (s.Lock) return s.Assets.FirstOrDefault(a => a.Id == id);
     }
 
-    public string PathOf(MediaAsset asset) => Path.Combine(_folder, asset.StoredName);
+    public string PathOf(MediaAsset asset) => Path.Combine(FolderOf(asset.SessionId), asset.StoredName);
 
-    public async Task<MediaAsset> AddAsync(IFormFile file, CancellationToken ct = default)
+    private string ThumbPathOf(MediaAsset asset) => Path.Combine(FolderOf(asset.SessionId), $"{asset.Id}_thumb.jpg");
+
+    public int Ping(string sessionId)
+    {
+        var s = GetOrCreate(sessionId);
+        lock (s.Lock) return s.Assets.Count;
+    }
+
+    public async Task<MediaAsset> AddAsync(string sessionId, IFormFile file, string? restoreId = null, CancellationToken ct = default)
     {
         var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
         var isImageExt = ImageExt.Contains(ext);
         if (!isImageExt && !VideoExt.Contains(ext) && !AudioExt.Contains(ext))
             throw new InvalidOperationException("Formato não suportado.");
+        if (restoreId != null && !IsValidId(restoreId))
+            throw new InvalidOperationException("ID de mídia inválido.");
 
-        var asset = new MediaAsset { OriginalName = Path.GetFileName(file.FileName) };
+        var s = GetOrCreate(sessionId);
+        var asset = new MediaAsset { SessionId = sessionId, OriginalName = Path.GetFileName(file.FileName) };
+        if (restoreId != null) asset.Id = restoreId;
         asset.StoredName = asset.Id + ext;
-        var path = PathOf(asset);
-
-        await using (var fs = File.Create(path))
-            await file.CopyToAsync(fs, ct);
+        
+        lock (s.Lock)
+        {
+            if (s.Ended || s.Assets.Any(a => a.Id == asset.Id) || !s.Pending.Add(asset.Id))
+                throw new InvalidOperationException("Essa mídia já está na coleção.");
+        }
 
         try
         {
+            Directory.CreateDirectory(FolderOf(sessionId));
+            var path = PathOf(asset);
+
+            await using (var fs = File.Create(path))
+                await file.CopyToAsync(fs, ct);
+
             var info = await FFProbe.AnalyseAsync(path);
             var video = info.PrimaryVideoStream;
             asset.Width = video?.Width ?? 0;
@@ -91,36 +141,100 @@ public sealed class MediaLibrary : IMediaLibrary
             }
 
             if (!asset.IsAudioOnly)
-                await MakeThumbAsync(path, Path.Combine(_folder, $"{asset.Id}_thumb.jpg"), asset.IsImage ? 0 : Math.Min(1, asset.Duration / 2));
+                await MakeThumbAsync(path, ThumbPathOf(asset), asset.IsImage ? 0 : Math.Min(1, asset.Duration / 2));
+            
+            lock (s.Lock)
+            {
+                if (s.Ended) throw new InvalidOperationException("A sessão foi encerrada.");
+                s.Assets.Add(asset);
+            }
+            return asset;
         }
         catch (InvalidOperationException)
         {
-            TryDelete(path);
+            DeleteFiles(asset);
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            DeleteFiles(asset);
             throw;
         }
         catch
         {
-            TryDelete(path);
+            DeleteFiles(asset);
             throw new InvalidOperationException("Não foi possível ler esse arquivo de mídia.");
         }
-
-        lock (_lock) { _assets.Add(asset); Save(); }
-        return asset;
+        finally
+        {
+            lock (s.Lock) s.Pending.Remove(asset.Id);
+        }
     }
 
-    public bool Delete(string id)
+    public bool Delete(string sessionId, string id)
     {
-        lock (_lock)
+        var s = Find(sessionId, touch: true);
+        if (s == null) return false;
+        lock (s.Lock)
         {
-            var a = _assets.FirstOrDefault(x => x.Id == id);
+            var a = s.Assets.FirstOrDefault(x => x.Id == id);
             if (a == null) return false;
-            _assets.Remove(a);
-            Save();
-            TryDelete(PathOf(a));
-            TryDelete(Path.Combine(_folder, $"{a.Id}_thumb.jpg"));
+            s.Assets.Remove(a);
+            DeleteFiles(a);
             return true;
         }
     }
+
+    public void EndSession(string sessionId)
+    {
+        if (!IsValidId(sessionId)) return;
+        if (_sessions.TryRemove(sessionId, out var s))
+        {
+            lock (s.Lock) { s.Ended = true; s.Assets.Clear(); }
+        }
+        DeleteFolder(FolderOf(sessionId));
+    }
+
+    public int PurgeIdle(TimeSpan idle)
+    {
+        var cutoff = DateTime.UtcNow - idle;
+        var removed = 0;
+
+        foreach (var (sid, s) in _sessions)
+        {
+            if (new DateTime(Interlocked.Read(ref s.LastSeenTicks), DateTimeKind.Utc) >= cutoff) continue;
+            EndSession(sid);
+            removed++;
+        }
+
+        foreach (var dir in Directory.GetDirectories(_root))
+        {
+            var name = Path.GetFileName(dir);
+            if (!IsValidId(name) || _sessions.ContainsKey(name)) continue;
+            if (Directory.GetLastWriteTimeUtc(dir) >= cutoff) continue;
+            DeleteFolder(dir);
+            removed++;
+        }
+        return removed;
+    }
+
+    private string FolderOf(string sessionId) => Path.Combine(_root, sessionId);
+
+    private Session? Find(string sessionId, bool touch)
+    {
+        if (!IsValidId(sessionId) || !_sessions.TryGetValue(sessionId, out var s)) return null;
+        if (touch) Interlocked.Exchange(ref s.LastSeenTicks, DateTime.UtcNow.Ticks);
+        return s;
+    }
+
+    private Session GetOrCreate(string sessionId)
+    {
+        if (!IsValidId(sessionId)) throw new InvalidOperationException("Sessão inválida.");
+        var s = _sessions.GetOrAdd(sessionId, _ => new Session());
+        Interlocked.Exchange(ref s.LastSeenTicks, DateTime.UtcNow.Ticks);
+        return s;
+    }
+
 
     private static Task MakeThumbAsync(string input, string thumb, double seekSeconds)
         => FFMpegArguments
@@ -129,6 +243,13 @@ public sealed class MediaLibrary : IMediaLibrary
                 "-frames:v 1 -q:v 4 -vf scale=160:90:force_original_aspect_ratio=decrease,pad=160:90:(ow-iw)/2:(oh-ih)/2:color=black"))
             .ProcessAsynchronously();
 
-    private void Save() => File.WriteAllText(_indexFile, JsonSerializer.Serialize(_assets, Json));
-    private static void TryDelete(string p) { try { if (File.Exists(p)) File.Delete(p); } catch { /* arquivo em uso: ignora */ } }
+    private void DeleteFiles(MediaAsset a)
+    {
+        TryDelete(PathOf(a));
+        TryDelete(ThumbPathOf(a));
+    }
+
+    private static void DeleteFolder(string p) { try { if (Directory.Exists(p)) Directory.Delete(p, true); } catch { } }
+
+    private static void TryDelete(string p) { try { if (File.Exists(p)) File.Delete(p); } catch { } }
 }

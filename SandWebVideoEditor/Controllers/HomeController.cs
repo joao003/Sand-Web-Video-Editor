@@ -20,31 +20,65 @@ public class HomeController : Controller
         return View();
     }
 
+    private string? SessionId()
+    {
+        var sid = Request.Headers["X-Sand-Session"].FirstOrDefault() ?? Request.Query["sid"].FirstOrDefault();
+        return MediaLibrary.IsValidId(sid) ? sid : null;
+    }
+
     [HttpGet]
     public IActionResult Media() {
-        return Json(_library.List());
+        var sid = SessionId();
+        if (sid == null) return BadRequest("Sessão inválida.");
+        return Json(_library.List(sid));
     }
 
     [HttpPost]
     [RequestSizeLimit(2_000_000_000)]
     [RequestFormLimits(MultipartBodyLengthLimit = 2_000_000_000)]
-    public async Task<IActionResult> UploadMedia(IFormFile file, CancellationToken ct)
+    public async Task<IActionResult> UploadMedia(IFormFile file, string? restoreId, CancellationToken ct)
     {
+        var sid = SessionId();
+        if (sid == null) return BadRequest("Sessão inválida.");
         if (file == null || file.Length == 0) return BadRequest("Arquivo inválido.");
-        try { return Json(await _library.AddAsync(file, ct)); }
+        try { return Json(await _library.AddAsync(sid, file, restoreId, ct)); }
         catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
     }
 
     [HttpPost]
     public IActionResult DeleteMedia(string id) {
-        return _library.Delete(id) ? Ok() : NotFound();
+        var sid = SessionId();
+        if (sid == null) return BadRequest("Sessão inválida.");
+        return _library.Delete(sid, id) ? Ok() : NotFound();
+    }
+
+    [HttpPost]
+    public IActionResult Ping()
+    {
+        var sid = SessionId();
+        if (sid == null) return BadRequest("Sessão inválida.");
+        return Json(new { count = _library.Ping(sid) });
+    }
+
+    [HttpPost]
+    public IActionResult EndSession()
+    {
+        var sid = SessionId();
+        if (sid != null) _library.EndSession(sid);
+        return NoContent();
     }
 
     [HttpPost]
     public IActionResult RenderVideo([FromBody] RenderTimelineRequest request)
     {
+        var sid = SessionId();
+        if (sid == null) return BadRequest("Sessão inválida.");
         if (request.Items == null || request.Items.Count == 0) return BadRequest("A timeline está vazia.");
         if (request.Items.Count > 200) return BadRequest("Itens demais na timeline.");
+
+        request.SessionId = sid;
+        _library.Ping(sid);
+        
         var job = _jobs.Enqueue(request);
         return Accepted(new { jobId = job.Id });
     }

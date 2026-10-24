@@ -174,9 +174,13 @@
     return JSON.stringify({ version: 1, projectName: project.projectName, items: project.items }, dropPrivate, 2);
   }
 
-  function parseProject(text, getAsset) {
-    let raw;
-    try { raw = JSON.parse(text); } catch { throw new Error('Arquivo de projeto inválido.'); }
+  function parseProject(input, getAsset) {
+    let raw = input;
+
+    if (typeof input === 'string') {
+      try { raw = JSON.parse(input); } catch { throw new Error('Arquivo de projeto inválido.'); }
+    }
+
     if (!raw || !Array.isArray(raw.items)) throw new Error('Arquivo de projeto inválido.');
 
     const num = (v, d, min = -Infinity, max = Infinity) => { const n = Number(v); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : d; };
@@ -223,10 +227,64 @@
     return String(m).padStart(2, '0') + ':' + s.toFixed(1).padStart(4, '0');
   }
 
-  async function exportProject(items, { height = 720, onProgress = () => {}, pollMs = 1000 } = {}) {
+  function newSessionId() {
+    const b = new Uint8Array(16);
+    globalThis.crypto.getRandomValues(b);
+    return Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+  }
+
+  const SESSION_ID_RE = /^[0-9a-f]{32}$/;
+  const MAX_PACKAGE_MEDIA = 500;
+  const MAX_PACKAGE_HEADER = 20 * 1024 * 1024;
+  const PKG_MAGIC = 'SVPROJ1\n';
+
+  async function buildPackage(project, getMedia, onProgress = () => {}) {
+    const ids = [...new Set(project.items.filter(i => i.type !== 2 && i.assetId).map(i => i.assetId))];
+    const media = [], blobs = [];
+    for (let n = 0; n < ids.length; n++) {
+      onProgress(n, ids.length);
+      const m = await getMedia(ids[n]);
+      if (!m || !m.blob) continue;
+      media.push({ id: ids[n], name: m.name, size: m.blob.size });
+      blobs.push(m.blob);
+    }
+    const header = new TextEncoder().encode(
+      JSON.stringify({ version: 2, projectName: project.projectName, items: project.items, media }, dropPrivate));
+    const len = new Uint8Array(4);
+    new DataView(len.buffer).setUint32(0, header.length, true);
+    return new Blob([PKG_MAGIC, len, header, ...blobs], { type: 'application/octet-stream' });
+  }
+
+  async function readPackage(file) {
+    const head = new Uint8Array(await file.slice(0, PKG_MAGIC.length + 4).arrayBuffer());
+    if (head.length < PKG_MAGIC.length + 4) return null;
+    for (let i = 0; i < PKG_MAGIC.length; i++) if (head[i] !== PKG_MAGIC.charCodeAt(i)) return null;
+
+    const bad = () => new Error('Arquivo de projeto inválido ou incompleto.');
+    const headerLen = new DataView(head.buffer).getUint32(PKG_MAGIC.length, true);
+    const bodyStart = PKG_MAGIC.length + 4;
+    if (headerLen > MAX_PACKAGE_HEADER || bodyStart + headerLen > file.size) throw bad();
+
+    let header;
+    try { header = JSON.parse(new TextDecoder().decode(await file.slice(bodyStart, bodyStart + headerLen).arrayBuffer())); }
+    catch { throw bad(); }
+    if (!header || !Array.isArray(header.items) || !Array.isArray(header.media) || header.media.length > MAX_PACKAGE_MEDIA) throw bad();
+
+    let offset = bodyStart + headerLen;
+    const media = [];
+    for (const m of header.media) {
+      if (!m || !SESSION_ID_RE.test(m.id) || typeof m.name !== 'string' || !Number.isSafeInteger(m.size) || m.size < 0) throw bad();
+      if (offset + m.size > file.size) throw bad();
+      media.push({ id: m.id, name: m.name.slice(0, 200), blob: file.slice(offset, offset + m.size) });
+      offset += m.size;
+    }
+    return { header, media };
+  }
+
+  async function exportProject(items, { height = 720, onProgress = () => {}, pollMs = 1000, sessionId = '' } = {}) {
     layoutVideoTrack(items);
     const res = await fetch('/Home/RenderVideo', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Sand-Session': sessionId },
       body: JSON.stringify({ height, items }, dropPrivate),
     });
     if (!res.ok) throw new Error(await res.text());
@@ -245,6 +303,7 @@
     uuid, dur, itemEnd, layoutVideoTrack, timelineEnd, fadeFactor, clampVolume, clampToAsset,
     newItemFromAsset, newTitleItem, detachAudio, cloneItem, splitCheck, splitItem,
     snapshot, createHistory, serializeProject, parseProject, fmtTime, exportProject,
+    newSessionId, buildPackage, readPackage
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.EditorCore = api;
 })(typeof window !== 'undefined' ? window : globalThis);

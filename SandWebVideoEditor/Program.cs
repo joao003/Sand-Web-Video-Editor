@@ -12,6 +12,7 @@ builder.Services.Configure<FormOptions>(o => o.MultipartBodyLengthLimit = 2_000_
 builder.WebHost.ConfigureKestrel(k => k.Limits.MaxRequestBodySize = 2_000_000_000L);
 
 builder.Services.AddSingleton<IMediaLibrary, MediaLibrary>();
+builder.Services.AddHostedService<MediaCleanupService>();
 builder.Services.AddSingleton<TimelineRenderer>();
 builder.Services.AddSingleton<RenderJobService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<RenderJobService>());

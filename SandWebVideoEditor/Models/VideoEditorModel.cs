@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace SandWebVideoEditor.Models
 {
     public enum TrackType
@@ -43,11 +45,18 @@ namespace SandWebVideoEditor.Models
     {
         public List<TrackItemModel> Items { get; set; } = new();
         public int Height { get; set; } = 720;
+
+        [JsonIgnore]
+        public string SessionId { get; set; } = string.Empty;
     }
 
     public class MediaAsset
     {
         public string Id { get; set; } = Guid.NewGuid().ToString("N");
+
+        [JsonIgnore]
+        public string SessionId { get; set; } = string.Empty;
+
         public string OriginalName { get; set; } = string.Empty;
         public string StoredName { get; set; } = string.Empty;
         public bool IsAudioOnly { get; set; }
@@ -57,7 +66,7 @@ namespace SandWebVideoEditor.Models
         public int Width { get; set; }
         public int Height { get; set; }
 
-        public string Url => $"/uploads/{StoredName}";
-        public string? ThumbUrl => IsAudioOnly ? null : $"/uploads/{Id}_thumb.jpg";
+        public string Url => $"/uploads/{SessionId}/{StoredName}";
+        public string? ThumbUrl => IsAudioOnly ? null : $"/uploads/{SessionId}/{Id}_thumb.jpg";
     }
 }

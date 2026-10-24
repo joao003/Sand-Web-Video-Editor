@@ -14,6 +14,10 @@
     pps: 20,
   };
 
+  const SID = C.newSessionId();
+  const api = (url, init = {}) => fetch(url, { ...init, headers: { ...(init.headers || {}), 'X-Sand-Session': SID}});
+  let mediaOps = 0;
+
   const items = () => state.project.items;
   const byId = (id) => items().find(i => i.id === id);
   const selected = () => byId(state.selectedId);
@@ -63,7 +67,7 @@
 
   async function loadMedia() {
     try {
-      const list = await (await fetch('/Home/Media')).json();
+      const list = await (await api('/Home/Media')).json();
       state.media = new Map(list.map(a => [a.id, a]));
     } catch { notify('Não foi possível carregar a coleção de mídias.', 'danger'); }
     renderMediaList();
@@ -116,21 +120,34 @@
     }
   }
 
+  async function uploadOne(file, restoreId) {
+    const fd = new FormData();
+    fd.append('file', file);
+    if (restoreId) fd.append('restoreId', restoreId);
+    const res = await api('/Home/UploadMedia', { method: 'POST', body: fd });
+    if (!res.ok) throw new Error(await res.text());
+    const a = await res.json();
+    state.media.set(a.id, a);
+    renderMediaList();
+    return a;
+  }
+
+
   async function uploadFiles(files, addToTimeline = false) {
     const status = $('uploadStatus');
-    for (const file of files) {
-      status.textContent = 'Enviando ' + file.name + '...';
-      const fd = new FormData();
-      fd.append('file', file);
-      try {
-        const res = await fetch('/Home/UploadMedia', { method: 'POST', body: fd });
-        if (!res.ok) throw new Error(await res.text());
-        const a = await res.json();
-        state.media.set(a.id, a);
-        renderMediaList();
-        if (addToTimeline) addAssetToTimeline(a);
-      } catch (err) { notify('Falha ao enviar "' + file.name + '": ' + err.message, 'danger'); }
-    }
+
+    mediaOps++;
+
+    try {
+      for (const file of files) {
+        status.textContent = 'Enviando ' + file.name + '...';
+        try {
+          const a = await uploadOne(file);
+          if (addToTimeline) addAssetToTimeline(a);
+        } catch (err) { notify('Falha ao enviar "' + file.name + '": ' + err.message, 'danger'); }
+      }
+    } finally { mediaOps--; }
+
     status.textContent = '';
     $('mediaUpload').value = '';
   }
@@ -138,9 +155,15 @@
   async function deleteAsset(id) {
     const used = items().filter(i => i.assetId === id);
     if (used.length && !confirm('Esta mídia é usada em ' + used.length + ' clipe(s) da timeline. Remover tudo?')) return;
-    const res = await fetch('/Home/DeleteMedia?id=' + encodeURIComponent(id), { method: 'POST' });
-    if (!res.ok && res.status !== 404) { notify('Não foi possível remover a mídia.', 'danger'); return; }
-    state.media.delete(id);
+    
+    mediaOps++;
+    
+    try {
+      const res = await api('/Home/DeleteMedia?id=' + encodeURIComponent(id), { method: 'POST' });
+      if (!res.ok && res.status !== 404) { notify('Não foi possível remover a mídia.', 'danger'); return; }
+      state.media.delete(id);
+    } finally { mediaOps--; }
+
     renderMediaList();
     if (used.length) edit(() => { state.project.items = items().filter(i => i.assetId !== id); if (!byId(state.selectedId)) state.selectedId = null; });
   }
@@ -421,35 +444,82 @@
     edit(() => { items().push(c); state.selectedId = c.id; });
   }
 
+  let savedSnap = '';
+  const markSaved = () => { savedSnap = C.snapshot(state.project); };
+  const isDirty = () => items().length > 0 && C.snapshot(state.project) !== savedSnap;
+
   function newProject() {
     if (items().length && !confirm('Descartar o projeto atual? (dá para desfazer com Ctrl+Z)')) return;
     preview.pause();
     edit(() => { state.project.projectName = 'Novo Projeto'; state.project.items = []; state.selectedId = null; });
     preview.seek(0);
+    markSaved();
   }
 
-  function saveProject() {
+  let packaging = false;
+
+  async function saveProject() {
+    if (packaging) return;
+
     const name = prompt('Nome do projeto:', state.project.projectName);
     if (name === null) return;
     state.project.projectName = name.trim() || 'Projeto';
-    const blob = new Blob([C.serializeProject(state.project)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = state.project.projectName.replace(/[^\w\- ]+/g, '_') + '.vproj';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    updateUi();
+    packaging = true;
+    const status = $('uploadStatus');
+    let skipped = 0;
+    try {
+      const blob = await C.buildPackage(state.project, async (id) => {
+        const asset = state.media.get(id);
+        if (!asset) { skipped++; return null; }
+        try {
+          const res = await fetch(asset.url);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return { name: asset.originalName, blob: await res.blob() };
+        } catch { skipped++; return null; }
+      }, (n, total) => { status.textContent = 'Empacotando mídias (' + (n + 1) + '/' + total + ')...'; });
+
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = state.project.projectName.replace(/[^\w\- ]+/g, '_') + '.vproj';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+      markSaved();
+      if (skipped) notify(skipped + ' mídia(s) não puderam ser incluídas no arquivo do projeto.', 'warning');
+    } catch (err) {
+      notify('Não foi possível salvar o projeto: ' + err.message, 'danger');
+    } finally {
+      packaging = false;
+      status.textContent = '';
+      updateUi();
+    }
   }
 
   async function openProjectFile(file) {
     if (!file) return;
+    const status = $('uploadStatus');
+    mediaOps++;
     try {
-      const { project, missing } = C.parseProject(await file.text(), id => state.media.get(id));
       preview.pause();
+      const pkg = await C.readPackage(file);
+      let raw, failed = 0;
+      if (pkg) {
+        raw = pkg.header;
+        for (let n = 0; n < pkg.media.length; n++) {
+          const m = pkg.media[n];
+          if (state.media.has(m.id)) continue;
+          status.textContent = 'Restaurando mídia ' + (n + 1) + '/' + pkg.media.length + ': ' + m.name;
+          try { await uploadOne(new File([m.blob], m.name), m.id); } catch { failed++; }
+        }
+      } else raw = await file.text();
+
+      const { project, missing } = C.parseProject(raw, id => state.media.get(id));
       edit(() => { state.project.projectName = project.projectName; state.project.items = project.items; state.selectedId = null; });
       preview.seek(0);
-      if (missing) notify(missing + ' clipe(s) foram ignorados porque a mídia não existe nesta coleção.', 'warning');
+      markSaved();
+      if (failed) notify(failed + ' mídia(s) do projeto não puderam ser restauradas; os clipes delas foram ignorados.', 'warning');
+      else if (missing) notify(missing + ' clipe(s) foram ignorados porque a mídia não existe nesta coleção.', 'warning');
     } catch (err) { notify(err.message, 'danger'); }
+    finally { mediaOps--; status.textContent = ''; }
     $('fileProjectInput').value = '';
   }
 
@@ -474,6 +544,7 @@
     try {
       const url = await C.exportProject(items(), {
         height: parseInt($('exportHeight').value, 10),
+        sessionId: SID,
         onProgress: (p, st) => { bar.style.width = p + '%'; bar.textContent = st === 'Queued' ? 'Na fila...' : Math.round(p) + '%'; },
       });
       bar.style.width = '100%'; bar.textContent = '100%';
@@ -483,6 +554,7 @@
     } catch (err) { showExportError(err.message); }
     $('btnStartExport').disabled = false;
   }
+
   function showExportError(msg) { const e = $('exportError'); e.textContent = msg; e.classList.remove('d-none'); $('btnStartExport').disabled = false; }
 
   let toastTimer = 0;
@@ -597,9 +669,35 @@
 
     document.addEventListener('keyup', (e) => { if (e.key === ' ' && !isTyping(e) && !spaceIsNative(e)) e.preventDefault(); });
 
+    window.addEventListener('beforeunload', (e) => { if (isDirty()) { e.preventDefault(); e.returnValue = ''; } });
+    window.addEventListener('pagehide', (e) => { if (!e.persisted) endSession(); });
+    window.addEventListener('pageshow', (e) => { if (e.persisted) { heartbeat(); loadMedia(); } });
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') heartbeat(); });
+    setInterval(heartbeat, 60000);
+
     refreshAll();
+    markSaved();
     loadMedia();
   }
+
+  function endSession() {
+    const url = '/Home/EndSession?sid=' + SID;
+    try { if (navigator.sendBeacon && navigator.sendBeacon(url)) return; } catch { }
+    try { fetch(url, { method: 'POST', keepalive: true }); } catch { }
+  }
+
+  async function heartbeat() {
+    try {
+      const res = await api('/Home/Ping', { method: 'POST' });
+      if (!res.ok) return;
+      const { count } = await res.json();
+      if (count === 0 && state.media.size > 0 && mediaOps === 0) {
+        await loadMedia();
+        notify('As mídias expiraram no servidor por inatividade. Abra o projeto salvo para restaurá-las.', 'warning');
+      }
+    } catch { }
+  }
+
 
   window.Editor = { state, history, preview, actions: ACTIONS, refreshAll, edit, addAssetToTimeline, addTitle, splitSelected, toggleFullscreen };
   init();

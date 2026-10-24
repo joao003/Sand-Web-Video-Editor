@@ -26,7 +26,7 @@ public sealed class TimelineRenderer
         var (w, h) = req.Height switch { 480 => (854, 480), 1080 => (1920, 1080), _ => (1280, 720) };
         const int fps = 30;
 
-        var items = Resolve(req.Items);
+        var items = Resolve(req.Items, req.SessionId);
         var hasText = items.Any(i => i.Item.Type == TrackType.Text && !string.IsNullOrWhiteSpace(i.Item.Text));
         if (hasText && !File.Exists(_fontPath))
             throw new InvalidOperationException($"Fonte dos títulos não encontrada: {_fontPath}");
@@ -67,6 +67,7 @@ public sealed class TimelineRenderer
                     .WithVideoCodec(VideoCodec.LibX264)
                     .WithConstantRateFactor(23)
                     .WithSpeedPreset(Speed.VeryFast)
+                    .UsingThreads(1)
                     .WithAudioCodec(AudioCodec.Aac)
                     .WithFastStart()
                     .WithCustomArgument(string.Format(inv, "-pix_fmt yuv420p -r {0} -b:a 192k -t {1:0.###}", fps, plan.TotalDuration)))
@@ -81,7 +82,7 @@ public sealed class TimelineRenderer
         }
     }
 
-    private List<ResolvedItem> Resolve(IEnumerable<TrackItemModel> items)
+    private List<ResolvedItem> Resolve(IEnumerable<TrackItemModel> items, string sessionId)
     {
         var list = new List<ResolvedItem>();
         foreach (var it in items)
@@ -94,7 +95,7 @@ public sealed class TimelineRenderer
 
             if (it.Type == TrackType.Text) { list.Add(new ResolvedItem(it, null, false)); continue; }
 
-            var asset = _library.Get(it.AssetId)
+            var asset = _library.Get(sessionId, it.AssetId)
                 ?? throw new InvalidOperationException("Uma mídia da timeline não existe mais na coleção. Remova o clipe ou envie o arquivo novamente.");
             if (it.Type == TrackType.Video && asset.IsAudioOnly)
                 throw new InvalidOperationException($"\"{asset.OriginalName}\" é só áudio e não pode ir na trilha de vídeo.");
