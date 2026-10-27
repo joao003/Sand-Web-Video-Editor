@@ -87,7 +87,7 @@ public class HomeController : Controller
     public IActionResult RenderStatus(string id)
     {
         var job = _jobs.Get(id);
-        if (job == null) return NotFound();
+        if (job == null) return NotFound(new { state = "Unknown", error = "O servidor não encontrou este trabalho de exportação."});
         return Json(new
         {
             state = job.State.ToString(),

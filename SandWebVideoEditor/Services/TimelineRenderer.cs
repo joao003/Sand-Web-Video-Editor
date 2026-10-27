@@ -42,12 +42,12 @@ public sealed class TimelineRenderer
         {
             Action<FFMpegArgumentOptions> opts;
             if (inp.Still)
-                opts = _ => { };
+                opts = o => o.UsingThreads(1);
             else
             {
                 var seek = TimeSpan.FromMilliseconds(Math.Floor(inp.Seek * 1000 + 1e-6));
                 var dur = TimeSpan.FromMilliseconds(Math.Ceiling(inp.Duration * 1000 - 1e-6) + 250);
-                opts = o => o.Seek(seek).WithDuration(dur);
+                opts = o => o.UsingThreads(1).Seek(seek).WithDuration(dur);
             }
             args = args == null
                 ? FFMpegArguments.FromFileInput(inp.Path, true, opts)
@@ -62,6 +62,7 @@ public sealed class TimelineRenderer
         {
             await args!
                 .OutputToFile(outputPath, true, o => o
+                    .WithCustomArgument("filter-complex-threads 1")
                     .WithCustomArgument($"-filter_complex \"{plan.FilterGraph}\"")
                     .WithCustomArgument($"-map \"[{plan.VideoLabel}]\" -map \"[{plan.AudioLabel}]\"")
                     .WithVideoCodec(VideoCodec.LibX264)

@@ -287,11 +287,37 @@
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Sand-Session': sessionId },
       body: JSON.stringify({ height, items }, dropPrivate),
     });
-    if (!res.ok) throw new Error(await res.text());
-    const { jobId } = await res.json();
+
+    if (!res.ok) throw new Error((await res.text()) || 'Não foi possível iniciar a exportação. Erro: ' + res.status);
+
+    let jobId;
+    try { ({ jobId } = await res.json()); } catch { }
+    if (!jobId) throw new Error('O servidor não iniciou a exportação. Tente novamente.');
+
+    const LOST = 'O servidor interrompeu a exportação, possívelmente ele pode ter reiniciado por falta de memória. Tente novamente. Se esse erro persistir, exporte uma timeline com menos clipes.';
+    let failures = 0;
+
     for (;;) {
       await new Promise(r => setTimeout(r, pollMs));
-      const s = await (await fetch('/Home/RenderStatus?id=' + encodeURIComponent(jobId))).json();
+      
+      let s = null, status = 0;
+
+      try {
+        const r = await fetch('/Home/RenderStatus?id=' + encodeURIComponent(jobId));
+        status = r.status;
+        const body = await r.text();
+        try { s = body ? JSON.parse(body) : null; } catch { s = null; }
+      } catch { }
+
+      if (status === 404) throw new Error(LOST);
+
+      if (!s || status < 200 || status >= 300 || typeof s.state !== 'string') {
+        if (++failures >= 5) throw new Error(LOST);
+        continue;
+      }
+
+      failures = 0;
+
       onProgress(s.progress, s.state);
       if (s.state === 'Done') return s.url;
       if (s.state === 'Failed') throw new Error(s.error || 'Falha ao renderizar.');
