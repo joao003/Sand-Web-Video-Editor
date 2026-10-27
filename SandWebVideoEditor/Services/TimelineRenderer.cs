@@ -62,7 +62,7 @@ public sealed class TimelineRenderer
         {
             await args!
                 .OutputToFile(outputPath, true, o => o
-                    .WithCustomArgument("filter-complex-threads 1")
+                    .WithCustomArgument("-filter-complex-threads 1")
                     .WithCustomArgument($"-filter_complex \"{plan.FilterGraph}\"")
                     .WithCustomArgument($"-map \"[{plan.VideoLabel}]\" -map \"[{plan.AudioLabel}]\"")
                     .WithVideoCodec(VideoCodec.LibX264)
