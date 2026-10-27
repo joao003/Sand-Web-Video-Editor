@@ -11,10 +11,13 @@ public sealed class TimelineRenderer
 {
     private readonly IMediaLibrary _library;
     private readonly string _fontPath;
+    private readonly bool _lowMemory;
 
     public TimelineRenderer(IMediaLibrary library, IConfiguration config, IWebHostEnvironment env)
     {
         _library = library;
+
+        _lowMemory = config.GetValue("Editor:LowMemoryEncode", true);
 
         var configured = config["Editor:FontPath"] ?? "Fonts/editor.ttf";
         _fontPath = Path.IsPathRooted(configured) ? configured : Path.Combine(env.ContentRootPath, configured);
@@ -57,6 +60,7 @@ public sealed class TimelineRenderer
         var total = TimeSpan.FromSeconds(plan.TotalDuration);
         var stderr = new ConcurrentQueue<string>();
         var inv = CultureInfo.InvariantCulture;
+        var x264Extra = _lowMemory ? " -x264-params rc-lookahead=0:sync-lookahead=0:bframes=0" : "";
 
         try
         {
@@ -71,7 +75,7 @@ public sealed class TimelineRenderer
                     .UsingThreads(1)
                     .WithAudioCodec(AudioCodec.Aac)
                     .WithFastStart()
-                    .WithCustomArgument(string.Format(inv, "-pix_fmt yuv420p -r {0} -b:a 192k -t {1:0.###}", fps, plan.TotalDuration)))
+                    .WithCustomArgument(string.Format(inv, "-pix_fmt yuv420p -r {0} -b:a 192k -t {1:0.###}{2}", fps, plan.TotalDuration, x264Extra)))
                 .NotifyOnProgress(p => onProgress(Math.Clamp(p, 0, 100)), total)   // p = 0..100
                 .NotifyOnError(line => { stderr.Enqueue(line); while (stderr.Count > 12) stderr.TryDequeue(out _); })
                 .CancellableThrough(ct)
