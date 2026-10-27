@@ -138,6 +138,10 @@ body.fs-lock {
   min-width: 4px;
 }
 
+.bg-audio2 {
+  background-color: #6f42c1;
+}
+
 .timeline-item.is-muted {
   opacity: .65;
 }

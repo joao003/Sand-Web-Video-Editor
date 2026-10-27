@@ -107,13 +107,39 @@
 </svg> Imagem` : C.fmtTime(a.duration);
       const row = document.createElement('div');
       row.className = 'd-flex gap-1 mt-1';
-      const add = document.createElement('button');
-      add.className = 'btn btn-sm btn-primary flex-grow-1'; add.textContent = '+'; add.title = 'Adicionar à timeline';
-      add.dataset.add = a.id;
       const del = document.createElement('button');
       del.className = 'btn btn-sm btn-outline-danger'; del.textContent = '×'; del.title = 'Remover da coleção';
       del.dataset.del = a.id;
-      row.append(add, del);
+
+      if (a.isAudioOnly) {
+        const group = document.createElement('div');
+        group.className = 'dropdown flex-grow-1 d-flex';
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'btn btn-sm btn-primary flex-grow-1 dropdown-toggle';
+        toggle.textContent = '+'; toggle.title = 'Adicionar à timeline';
+        toggle.setAttribute('data-bs-toggle', 'dropdown');
+        toggle.setAttribute('data-bs-popper-config', '{"strategy":"fixed"}');
+        toggle.setAttribute('aria-expanded', 'false');
+        const menu = document.createElement('ul');
+        menu.className = 'dropdown-menu';
+        menu.setAttribute('data-bs-theme', 'dark');
+        for (const [track, label] of [[0, 'Primeira Trilha de Áudio/Música'], [1, 'Segunda Trilha de Áudio/Música']]) {
+          const li = document.createElement('li');
+          const item = document.createElement('button');
+          item.type = 'button'; item.className = 'dropdown-item small'; item.textContent = label;
+          item.dataset.addAudio = a.id; item.dataset.track = String(track);
+          li.appendChild(item); menu.appendChild(li);
+        }
+        group.append(toggle, menu);
+        row.append(group, del);
+      } else {
+        const add = document.createElement('button');
+        add.className = 'btn btn-sm btn-primary flex-grow-1'; add.textContent = '+'; add.title = 'Adicionar à timeline';
+        add.dataset.add = a.id;
+        row.append(add, del);
+      }
+
       body.append(name, dur, row);
       card.append(thumb, body);
       box.appendChild(card);
@@ -170,9 +196,9 @@
 
   function addAssetToTimeline(asset) {
     const type = asset.isAudioOnly ? 1 : 0;
-    const same = items().filter(i => i.type === type);
+    const same = items().filter(i => i.type === type && (type !== 1 || C.audioTrackOf(i) === audioTrack));
     const start = same.length ? Math.max(...same.map(C.itemEnd)) : 0;
-    const it = C.clampToAsset(C.newItemFromAsset(asset, type, start), asset);
+    const it = C.clampToAsset(C.newItemFromAsset(asset, type, start, audioTrack), asset);
     edit(() => { items().push(it); state.selectedId = it.id; });
   }
 
@@ -182,6 +208,9 @@
   }
 
   const TRACK_BG = ['bg-success', 'bg-primary', 'bg-black'];
+  const bgOf = (it) => (it.type === 1 && C.audioTrackOf(it) === 1 ? 'bg-audio-2' : TRACK_BG[it.type]);
+  const trackElOf = (it) => $(it.type === 1 ? (C.audioTrackOf(it) === 1 ? 'trackAudio2' : 'trackAudio') : ['trackVideo', '', 'trackText'][it.type]);
+
 
   function itemLabel(it) {
     if (it.type === 2) return '"' + (it.text || '') + '"';
@@ -210,12 +239,11 @@
       ruler.appendChild(tick);
     }
 
-    const tracks = [$('trackVideo'), $('trackAudio'), $('trackText')];
-    tracks.forEach(t => t.replaceChildren());
+    ['trackVideo', 'trackAudio', 'trackAudio2', 'trackText'].forEach(id => $(id).replaceChildren());
 
     for (const it of items()) {
       const clip = document.createElement('div');
-      clip.className = 'timeline-item ' + TRACK_BG[it.type] + (it.id === state.selectedId ? ' selected' : '') + (it.isMuted && it.type !== 2 ? ' is-muted' : '') + (it.isImage ? ' is-image' : '');
+      clip.className = 'timeline-item ' + bgOf(it) + (it.id === state.selectedId ? ' selected' : '') + (it.isMuted && it.type !== 2 ? ' is-muted' : '') + (it.isImage ? ' is-image' : '');
       clip.dataset.id = it.id;
       clip.style.left = it.timelineStartTime * pps + 'px';
       clip.style.width = C.dur(it) * pps + 'px';
@@ -238,7 +266,7 @@
       const handle = document.createElement('div');
       handle.className = 'resize-handle';
       clip.append(label, close, handle);
-      tracks[it.type].appendChild(clip);
+      trackElOf(it).appendChild(clip);
     }
     $('playhead').style.left = preview.time * pps + 'px';
   }
@@ -272,6 +300,13 @@
     document.addEventListener('mouseup', onDragEnd);
   }
 
+  function audioTrackAtY(y, current) {
+    const a = $('trackAudio').getBoundingClientRect(), b = $('trackAudio2').getBoundingClientRect();
+    if (!a.height || !b.height) return current;
+    return y >= (a.bottom + b.top) / 2 ? 1 : 0;
+  }
+
+
   function onDragMove(e) {
     if (!drag) return;
     if (drag.mode === 'scrub') { preview.seek(timeAtMouse(e)); return; }
@@ -282,6 +317,7 @@
     if (drag.mode === 'move') {
       if (it.type === 0) it._dragKey = drag.origStart + dt;
       else it.timelineStartTime = Math.max(0, snap01(drag.origStart + dt));
+      if (it.type === 1) it.audioTrack = audioTrackAtY(e.clientY, C.audioTrackOf(it));
     } else {
       it.duration = Math.max(C.MIN_CLIP, snap01(drag.origDur + dt));
       C.clampToAsset(it, assetOf(it));
@@ -296,7 +332,7 @@
     drag = null;
   }
 
-  const PANELS = { 0: ['panelVideo', 'panelVolume'], 1: ['panelVolume'], 2: ['panelText'] };
+  const PANELS = { 0: ['panelVideo', 'panelVolume'], 1: ['panelAudioTrack', 'panelVolume'], 2: ['panelText'] };
 
   function setVal(id, v) { const el = $(id); if (document.activeElement !== el) el.value = v; }
 
@@ -313,6 +349,7 @@
     $('propTimelineStart').disabled = it.type === 0;
     setVal('propDuration', Math.round(it.duration * 100) / 100);
 
+    if (it.type === 1) setVal('propAudioTrack', C.audioTrackOf(it));
     if (it.type !== 2 && !it.isImage) {
       setVal('propVolume', it.volume ?? 1);
       $('lblVolume').textContent = Math.round((it.volume ?? 1) * 100) + '%';
@@ -344,6 +381,7 @@
     switch (e.target.id) {
       case 'propTimelineStart': if (it.type !== 0) it.timelineStartTime = Math.max(0, num(v, 0)); break;
       case 'propDuration': it.duration = Math.max(C.MIN_CLIP, num(v, it.duration)); C.clampToAsset(it, assetOf(it)); break;
+      case 'propAudioTrack': if (it.type === 1) it.audioTrack = v === '1' ? 1 : 0; break;
       case 'propVolume': it.volume = C.clampVolume(v); break;
       case 'propMute': it.isMuted = e.target.checked; break;
       case 'propEffect': it.effect = v; break;
@@ -363,7 +401,7 @@
     if (!it) return;
     try {
       edit(() => { C.detachAudio(items(), it.id, !!(assetOf(it) && assetOf(it).hasAudio)); });
-      notify('Áudio separado: agora ele é um clipe na trilha de Áudio.', 'success');
+      notify('Áudio separado: agora ele é um clipe na primeira trilha de Áudio/Música.', 'success');
     } catch (err) { notify(err.message, 'warning'); }
   }
 
@@ -625,9 +663,11 @@
   function init() {
     document.addEventListener('click', (e) => {
       const b = e.target.closest('button');
-      if (b && e.detail > 0 && !b.closest('.modal')) b.blur();
+      if (b && e.detail > 0 && !b.closest('.modal') && !b.hasAttribute('data-bs-toggle')) b.blur();
       const a = e.target.closest('[data-action]');
       if (a) { e.preventDefault(); if (!a.classList.contains('disabled')) ACTIONS[a.dataset.action]?.(); return; }
+      const addAudio = e.target.closest('[data-add-audio]');
+      if (addAudio) { const asset = state.media.get(addAudio.dataset.addAudio); if (asset) addAssetToTimeline(asset, addAudio.dataset.track === '1' ? 1 : 0); return; }
       const add = e.target.closest('[data-add]');
       if (add) { const asset = state.media.get(add.dataset.add); if (asset) addAssetToTimeline(asset); return; }
       const delAsset = e.target.closest('.media-card [data-del]');

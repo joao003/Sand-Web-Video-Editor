@@ -100,6 +100,17 @@
                     <input type="number" id="propDuration" class="form-control form-control-sm" min="0.2" step="0.1">
                 </div>
 
+                <div id="panelAudioTrack" class="d-none">
+                    <div class="mb-2">
+                        <label class="form-label small" for="propAudioTrack">Trilha:</label>
+                        <select id="propAudioTrack" class="form-select form-select-sm">
+                            <option value="0">Primeira Trilha de Áudio/Música</option>
+                            <option value="1">Segunda Trilha de Áudio/Música</option>
+                        </select>
+                    </div>
+                </div>
+
+
                 <div id="panelVolume" class="d-none">
                     <div class="mb-2">
                         <label class="form-label small" for="propVolume">Volume: <span id="lblVolume">100%</span></label>
@@ -193,8 +204,10 @@
                     <div id="ruler" class="ruler"></div>
                     <small class="track-label fw-bold">Vídeo / Imagem</small>
                     <div id="trackVideo" class="track-container" style="height: 50px;"></div>
-                    <small class="track-label fw-bold">Áudio / Música</small>
+                    <small class="track-label fw-bold">Áudio / Música 1</small>
                     <div id="trackAudio" class="track-container" style="height: 50px;"></div>
+                    <small class="track-label fw-bold">Áudio / Música 2</small>
+                    <div id="trackAudio2" class="track-container" style="height: 50px;"></div>
                     <small class="track-label fw-bold">Títulos / Texto</small>
                     <div id="trackText" class="track-container" style="height: 50px;"></div>
                     <div id="playhead" class="playhead"></div>

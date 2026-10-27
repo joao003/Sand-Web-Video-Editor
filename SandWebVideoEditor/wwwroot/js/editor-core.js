@@ -64,7 +64,9 @@
     return item;
   }
 
-  function newItemFromAsset(asset, type, timelineStartTime) {
+  const audioTrackOf = (it) => (it && it.audioTrack === 1 ? 1 : 0);
+
+  function newItemFromAsset(asset, type, timelineStartTime, audioTrack = 0) {
     const image = !!asset.isImage && type === 0;
     const it = {
       id: uuid(), type,
@@ -74,6 +76,7 @@
     if (image) it.isImage = true;
     else Object.assign(it, { volume: 1.0, isMuted: false });
     if (type === 0) Object.assign(it, { effect: 'none', transition: '', transitionDuration: 1.0 });
+    if (type === 1) it.audioTrack = audioTrackOf({ audioTrack });
     return it;
   }
 
@@ -96,6 +99,7 @@
       id: uuid(), type: 1, assetId: v.assetId, mediaUrl: v.mediaUrl,
       timelineStartTime: v.timelineStartTime, startTime: v.startTime, duration: v.duration,
       volume: v.volume ?? 1.0, isMuted: false,
+      audioTrack: 0,
     };
     items.push(a);
     return a;
@@ -197,6 +201,7 @@
         duration: num(r.duration, 5, MIN_CLIP),
       };
       if (r.type !== 2) { it.volume = clampVolume(r.volume ?? 1); it.isMuted = r.isMuted === true; }
+      if (r.type === 1) it.audioTrack = audioTrackOf(r);
       if (r.type === 2) {
         it.text = typeof r.text === 'string' ? r.text.slice(0, 500) : '';
         it.fontSize = num(r.fontSize, 36, 10, 200);
@@ -299,7 +304,7 @@
 
     for (;;) {
       await new Promise(r => setTimeout(r, pollMs));
-      
+
       let s = null, status = 0;
 
       try {
@@ -329,7 +334,7 @@
     uuid, dur, itemEnd, layoutVideoTrack, timelineEnd, fadeFactor, clampVolume, clampToAsset,
     newItemFromAsset, newTitleItem, detachAudio, cloneItem, splitCheck, splitItem,
     snapshot, createHistory, serializeProject, parseProject, fmtTime, exportProject,
-    newSessionId, buildPackage, readPackage
+    newSessionId, buildPackage, readPackage, audioTrackOf,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.EditorCore = api;
 })(typeof window !== 'undefined' ? window : globalThis);
