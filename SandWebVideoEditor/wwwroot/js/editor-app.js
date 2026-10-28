@@ -124,6 +124,7 @@
         const menu = document.createElement('ul');
         menu.className = 'dropdown-menu';
         menu.setAttribute('data-bs-theme', 'dark');
+        menu.style = "background: #000000; background: linear-gradient(153deg,rgba(0, 0, 0, 1) 0%, rgba(48, 48, 48, 1) 78%);";
         for (const [track, label] of [[0, 'Primeira Trilha de Áudio/Música'], [1, 'Segunda Trilha de Áudio/Música']]) {
           const li = document.createElement('li');
           const item = document.createElement('button');
