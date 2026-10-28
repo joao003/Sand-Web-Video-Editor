@@ -66,6 +66,44 @@
 
   const audioTrackOf = (it) => (it && it.audioTrack === 1 ? 1 : 0);
 
+  function findFreeStart(clips, desired, length) {
+    const EPS = 1e-6;
+    const spans = clips.map(c => [c.timelineStartTime, itemEnd(c)]).sort((a, b) => a[0] - b[0]);
+    const want = Math.max(0, Number(desired) || 0);
+
+    let best = want, bestDist = Infinity, cursor = 0;
+
+    const consider = (from, to) => {
+      if (to - from < length - EPS) return;
+      const pos = Math.max(from, Math.min(Math.max(want, from), to - length));
+      const d = Math.abs(pos - want);
+      if (d <= bestDist + EPS) { best = pos; bestDist = Math.min(d, bestDist); }
+    };
+
+    for (const [s, e] of spans) { if (s > cursor) consider(cursor, s); cursor = Math.max(cursor, e); }
+    consider(cursor, Infinity);
+
+    return round6(best);
+  }
+
+  function moveToAudioTrack(items, id, track) {
+    const it = items.find(i => i.id === id);
+
+    if (!it || it.type !== 1) return null;
+
+    const target = audioTrackOf({ audioTrack: track });
+    const from = it.timelineStartTime, want = Math.max(0, Number(from) || 0);
+    const others = items.filter(i => i.type === 1 && i.id !== id && audioTrackOf(i) === target);
+    const free = findFreeStart(others, want, dur(it));
+    const pushed = Math.abs(free - want) > 1e-6;
+
+    it.audioTrack = target;
+    it.timelineStartTime = pushed ? free : want;
+
+    return { track: target, from, to: it.timelineStartTime, pushed };
+  }
+
+
   function newItemFromAsset(asset, type, timelineStartTime, audioTrack = 0) {
     const image = !!asset.isImage && type === 0;
     const it = {
@@ -334,7 +372,7 @@
     uuid, dur, itemEnd, layoutVideoTrack, timelineEnd, fadeFactor, clampVolume, clampToAsset,
     newItemFromAsset, newTitleItem, detachAudio, cloneItem, splitCheck, splitItem,
     snapshot, createHistory, serializeProject, parseProject, fmtTime, exportProject,
-    newSessionId, buildPackage, readPackage, audioTrackOf,
+    newSessionId, buildPackage, readPackage, audioTrackOf, findFreeStart, moveToAudioTrack,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.EditorCore = api;
 })(typeof window !== 'undefined' ? window : globalThis);

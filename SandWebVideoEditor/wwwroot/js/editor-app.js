@@ -292,7 +292,7 @@
       state.selectedId = it.id;
       drag = {
         mode: e.target.classList.contains('resize-handle') ? 'resize' : 'move',
-        id: it.id, startX: e.clientX, origStart: it.timelineStartTime, origDur: it.duration,
+        id: it.id, startX: e.clientX, origStart: it.timelineStartTime, origDur: it.duration, origTrack: C.audioTrackOf(it),
       };
       renderTimeline(); renderProperties();
     }
@@ -328,11 +328,30 @@
   function onDragEnd() {
     document.removeEventListener('mousemove', onDragMove);
     document.removeEventListener('mouseup', onDragEnd);
-    if (drag && drag.id) { const it = byId(drag.id); if (it) delete it._dragKey; refreshAll(); commit(); }
+
+    if (drag && drag.id) {
+      const it = byId(drag.id);
+      if (it) {
+        delete it._dragKey;
+        if (drag.mode === 'move' && it.type === 1 && C.audioTrackOf(it) !== drag.origTrack) settleOnAudioTrack(it, C.audioTrackOf(it));
+      }
+      refreshAll(); commit();
+    }
+
     drag = null;
   }
 
+  const TRACK_NAME = ['primeira', 'segunda'];
+
+  function settleOnAudioTrack(it, track) {
+    const r = C.moveToAudioTrack(items(), it.id, track);
+    if (r && r.pushed) notify('Esse trecho da ' + TRACK_NAME[r.track] + ' trilha já tinha áudio: o clipe foi para o espaço livre mais próximo (' + C.fmtTime(r.to) + ').', 'info');
+    return r;
+  }
+
   const PANELS = { 0: ['panelVideo', 'panelVolume'], 1: ['panelAudioTrack', 'panelVolume'], 2: ['panelText'] };
+  const ALL_PANELS = [...new Set(Object.values(PANELS).flat())];
+
 
   function setVal(id, v) { const el = $(id); if (document.activeElement !== el) el.value = v; }
 
@@ -342,7 +361,7 @@
     $('noSelectionMsg').classList.toggle('d-none', !!it);
     if (!it) return;
 
-    ['panelVideo', 'panelVolume', 'panelText'].forEach(p => $(p).classList.add('d-none'));
+    ALL_PANELS.forEach(p => $(p).classList.add('d-none'));
     (it.isImage ? ['panelVideo'] : PANELS[it.type]).forEach(p => $(p).classList.remove('d-none'));
 
     setVal('propTimelineStart', Math.round(it.timelineStartTime * 100) / 100);
@@ -381,7 +400,7 @@
     switch (e.target.id) {
       case 'propTimelineStart': if (it.type !== 0) it.timelineStartTime = Math.max(0, num(v, 0)); break;
       case 'propDuration': it.duration = Math.max(C.MIN_CLIP, num(v, it.duration)); C.clampToAsset(it, assetOf(it)); break;
-      case 'propAudioTrack': if (it.type === 1) it.audioTrack = v === '1' ? 1 : 0; break;
+      case 'propAudioTrack': if (it.type === 1) settleOnAudioTrack(it, v === '1' ? 1 : 0); break;
       case 'propVolume': it.volume = C.clampVolume(v); break;
       case 'propMute': it.isMuted = e.target.checked; break;
       case 'propEffect': it.effect = v; break;
