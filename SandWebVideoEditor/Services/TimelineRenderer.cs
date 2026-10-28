@@ -44,7 +44,10 @@ public sealed class TimelineRenderer
         foreach (var inp in plan.Inputs)
         {
             Action<FFMpegArgumentOptions> opts;
-            if (inp.Still)
+            if (inp.Lavfi)
+            {
+                opts = o => o.WithCustomArgument("-f lavfi");
+            } else if (inp.Still)
                 opts = o => o.UsingThreads(1);
             else
             {
@@ -52,9 +55,10 @@ public sealed class TimelineRenderer
                 var dur = TimeSpan.FromMilliseconds(Math.Ceiling(inp.Duration * 1000 - 1e-6) + 250);
                 opts = o => o.UsingThreads(1).Seek(seek).WithDuration(dur);
             }
+            var verifyExists = !inp.Lavfi;
             args = args == null
-                ? FFMpegArguments.FromFileInput(inp.Path, true, opts)
-                : args.AddFileInput(inp.Path, true, opts);
+                ? FFMpegArguments.FromFileInput(inp.Path, verifyExists, opts)
+                : args.AddFileInput(inp.Path, verifyExists, opts);
         }
 
         var total = TimeSpan.FromSeconds(plan.TotalDuration);

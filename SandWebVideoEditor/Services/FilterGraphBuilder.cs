@@ -5,7 +5,7 @@ using SandWebVideoEditor.Models;
 
 namespace SandWebVideoEditor.Services
 {
-    public sealed record FfInput(string Path, double Seek, double Duration, bool Still = false);
+    public sealed record FfInput(string Path, double Seek, double Duration, bool Still = false, bool Lavfi = false);
 
     public sealed record ResolvedItem(TrackItemModel Item, string? Path, bool HasAudio, bool IsImage = false);
 
@@ -118,12 +118,13 @@ namespace SandWebVideoEditor.Services
             var texts = items.Where(i => i.Item.Type == TrackType.Text && !string.IsNullOrWhiteSpace(i.Item.Text))
                             .OrderBy(i => i.Item.TimelineStartTime).ToList();
 
-            if (plan.Inputs.Count == 0)
-                throw new InvalidOperationException("Adicione ao menos um vídeo ou áudio à timeline.");
-
             double audioEnd = audios.Count == 0 ? 0 : audios.Max(a => a.R.Item.TimelineStartTime + a.Dur);
             double textEnd = texts.Count == 0 ? 0 : texts.Max(t => t.Item.TimelineStartTime + Math.Max(MinClip, t.Item.Duration));
             double total = Math.Max(videoEnd, Math.Max(audioEnd, textEnd));
+
+            if (total <= 0.001)
+                throw new InvalidOperationException("Não há nada para exportar: adicione um clipe ou um título com texto à timeline.");
+
             plan.TotalDuration = total;
 
             for (int k = 0; k < slots.Count; k++)
@@ -150,7 +151,15 @@ namespace SandWebVideoEditor.Services
             string acc;
             if (slots.Count == 0)
             {
-                g.Append($"color=c=black:s={w}x{h}:r={fps}:d={F(total)},format=yuv420p[v0];");
+                if (plan.Inputs.Count == 0)
+                {
+                    plan.Inputs.Add(new FfInput($"color=c=black:s={w}x{h}:r={fps}:d={F(total)}", 0, total, Lavfi: true));
+                    g.Append("[0:v]format=yuv420p[v0];");
+                }
+                else
+                {
+                    g.Append($"color=c=black:s={w}x{h}:r={fps}:d={F(total)},format=yuv420p[v0];");
+                }
                 acc = "v0";
             }
             else

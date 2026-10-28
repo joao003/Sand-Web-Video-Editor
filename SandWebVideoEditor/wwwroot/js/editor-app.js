@@ -590,8 +590,11 @@
   }
 
   async function startExport() {
-    const hasMedia = items().some(i => i.type !== 2);
-    if (!hasMedia) { showExportError('Adicione ao menos um vídeo ou áudio à timeline.'); return; }
+    if (!items().some(i => i.type !== 2 || (i.text || '').trim() !== '')) {
+      showExportError(items().length ? 'Os títulos estão sem texto: escreva algum texto ou adicione um clipe à timeline.' : 'A timeline está vazia: adicione um clipe ou um título.');
+      return;
+    }
+
     $('btnStartExport').disabled = true;
     $('exportError').classList.add('d-none');
     $('exportResult').classList.add('d-none');
