@@ -580,12 +580,33 @@
     $('fileProjectInput').value = '';
   }
 
+  let lastSuggestedName = '', lastExportUrl = '';
+
+  function suggestedExportName() {
+    const n = (state.project.projectName || '').trim();
+    return n && n !== 'Novo Projeto' ? n : '';
+  }
+
+  function refreshExportName() {
+    const file = C.exportFileName($('exportFileName').value);
+    $('exportFileHint').textContent = 'Será salvo como: ' + file;
+    if (lastExportUrl) {
+      $('exportDownload').href = C.downloadHref(lastExportUrl, $('exportFileName').value);
+      $('exportDownload').download = file;
+    }
+  }
+
+
   function openExport() {
     preview.pause();
     $('exportResult').classList.add('d-none');
     $('exportError').classList.add('d-none');
     $('exportProgress').classList.add('d-none');
     $('btnStartExport').disabled = false;
+    lastExportUrl = '';
+    const input = $('exportFileName'), suggestion = suggestedExportName();
+    if (input.value.trim() === '' || input.value === lastSuggestedName) { input.value = suggestion; lastSuggestedName = suggestion; }
+    refreshExportName();
     bootstrap.Modal.getOrCreateInstance($('exportModal')).show();
   }
 
@@ -598,6 +619,7 @@
     $('btnStartExport').disabled = true;
     $('exportError').classList.add('d-none');
     $('exportResult').classList.add('d-none');
+    lastExportUrl = '';
     const bar = $('exportBar');
     $('exportProgress').classList.remove('d-none');
     bar.style.width = '0%'; bar.textContent = 'Na fila...';
@@ -609,7 +631,8 @@
       });
       bar.style.width = '100%'; bar.textContent = '100%';
       $('exportVideo').src = url;
-      $('exportDownload').href = url + (url.includes('?') ? '&' : '?') + 'attachment=true';
+      lastExportUrl = url;
+      refreshExportName();
       $('exportResult').classList.remove('d-none');
     } catch (err) { showExportError(err.message); }
     $('btnStartExport').disabled = false;
@@ -721,6 +744,10 @@
     if (typeof ResizeObserver !== 'undefined') new ResizeObserver(() => { if (!preview.playing) preview.refresh(); }).observe($('stage'));
     $('fileProjectInput').addEventListener('change', (e) => openProjectFile(e.target.files[0]));
     $('timelineInner').addEventListener('mousedown', onTimelineDown);
+    $('exportFileName').addEventListener('input', refreshExportName);
+    $('exportFileName').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); if (!$('btnStartExport').disabled) startExport(); }
+    });
     $('clipProperties').addEventListener('input', onPropInput);
     $('clipProperties').addEventListener('change', commit);
     $('btnPlay').addEventListener('click', () => preview.toggle());

@@ -270,6 +270,31 @@
     return String(m).padStart(2, '0') + ':' + s.toFixed(1).padStart(4, '0');
   }
 
+  const EXPORT_NAME_DEFAULT = 'video-editado', EXPORT_NAME_MAX = 100;
+  const cleanName = (n) => n.replace(/\s+/g, ' ').replace(/-{2,}/g, '-').replace(/^[ .-]+|[ .-]+$/g, '');
+  function finishName(n) {
+    for (;;) {
+      const before = n;
+      while (/\.mp4$/i.test(n)) n = n.slice(0, -4);
+      n = cleanName(n);
+      if (n === before) return n;
+    }
+  }
+  function exportFileName(raw) {
+    let name = finishName(String(raw ?? '').replace(/[\\/:*?"<>|\u0000-\u001f\u007f-\u009f]/g, '-'));
+    if (name.length > EXPORT_NAME_MAX) {
+      name = name.slice(0, EXPORT_NAME_MAX);
+      if (/[\ud800-\udbff]$/.test(name)) name = name.slice(0, -1);
+      name = finishName(name);
+    }
+    return (name || EXPORT_NAME_DEFAULT) + '.mp4';
+  }
+
+  function downloadHref(url, name) {
+    return url + (url.includes('?') ? '&' : '?') + 'attachment=true&name=' + encodeURIComponent(exportFileName(name));
+  }
+
+
   function newSessionId() {
     const b = new Uint8Array(16);
     globalThis.crypto.getRandomValues(b);
@@ -373,6 +398,7 @@
     newItemFromAsset, newTitleItem, detachAudio, cloneItem, splitCheck, splitItem,
     snapshot, createHistory, serializeProject, parseProject, fmtTime, exportProject,
     newSessionId, buildPackage, readPackage, audioTrackOf, findFreeStart, moveToAudioTrack,
+    exportFileName, downloadHref,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.EditorCore = api;
 })(typeof window !== 'undefined' ? window : globalThis);

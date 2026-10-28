@@ -98,11 +98,11 @@ public class HomeController : Controller
     }
 
     [HttpGet]
-    public IActionResult Download(string id, bool attachment = false)
+    public IActionResult Download(string id, bool attachment = false, string? name = null)
     {
         var job = _jobs.Get(id);
         if (job is not { State: JobState.Done } || !System.IO.File.Exists(job.OutputPath)) return NotFound();
-        return PhysicalFile(job.OutputPath, "video/mp4", attachment ? "video-editado.mp4" : null, enableRangeProcessing: true);
+        return PhysicalFile(job.OutputPath, "video/mp4", attachment ? ExportFileName.Sanitize(name) : null, enableRangeProcessing: true);
     }
 
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

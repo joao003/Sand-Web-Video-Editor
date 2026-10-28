@@ -224,7 +224,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body">
-                <div class="d-flex align-items-end gap-2 mb-3">
+                <div class="d-flex flex-wrap align-items-end gap-2 mb-3">
                     <div>
                         <label class="form-label small" for="exportHeight">Resolução</label>
                         <select id="exportHeight" class="form-select form-select-sm">
@@ -233,8 +233,18 @@
                             <option value="1080">1080p (Full HD)</option>
                         </select>
                     </div>
+                    
+                    <div class="flex-grow-1">
+                        <label class="form-label small" for="exportFileName">Nome do arquivo</label>
+                        <div class="input-group input-group-sm">
+                            <input type="text" id="exportFileName" class="form-control" maxlength="100" placeholder="video-editado" autocomplete="off" spellcheck="false" aria-describedby="exportFileHint">
+                            <span class="input-group-text">.mp4</span>
+                        </div>
+                    </div>
+
                     <button id="btnStartExport" class="btn btn-primary btn-sm" data-action="iniciarExportacao">Exportar</button>
                 </div>
+                <div id="exportFileHint" class="small text-white-50 mb-3" aria-live="polite"></div>
                 <div id="exportProgress" class="progress mb-3 d-none" style="height: 24px;">
                     <div id="exportBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%">0%</div>
                 </div>
