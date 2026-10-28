@@ -208,9 +208,9 @@
   }
 
   const TRACK_BG = ['bg-success', 'bg-primary', 'bg-black'];
+
   const bgOf = (it) => (it.type === 1 && C.audioTrackOf(it) === 1 ? 'bg-audio-2' : TRACK_BG[it.type]);
   const trackElOf = (it) => $(it.type === 1 ? (C.audioTrackOf(it) === 1 ? 'trackAudio2' : 'trackAudio') : ['trackVideo', '', 'trackText'][it.type]);
-
 
   function itemLabel(it) {
     if (it.type === 2) return '"' + (it.text || '') + '"';
