@@ -194,7 +194,7 @@
     if (used.length) edit(() => { state.project.items = items().filter(i => i.assetId !== id); if (!byId(state.selectedId)) state.selectedId = null; });
   }
 
-  function addAssetToTimeline(asset) {
+  function addAssetToTimeline(asset, audioTrack = 0) {
     const type = asset.isAudioOnly ? 1 : 0;
     const same = items().filter(i => i.type === type && (type !== 1 || C.audioTrackOf(i) === audioTrack));
     const start = same.length ? Math.max(...same.map(C.itemEnd)) : 0;
