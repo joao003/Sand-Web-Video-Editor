@@ -231,6 +231,8 @@
                             <option value="480">480p</option>
                             <option value="720" selected>720p (HD)</option>
                             <option value="1080">1080p (Full HD)</option>
+                            <option value="1440">1440p (Quad HD)</option>
+                            <option value="2160">4K (Ultra HD)</option>
                         </select>
                     </div>
                     
@@ -244,6 +246,7 @@
 
                     <button id="btnStartExport" class="btn btn-primary btn-sm" data-action="iniciarExportacao">Exportar</button>
                 </div>
+                <p style="font-size: 0.7rem;" id="resolutionWarning">AVISO: Exportar em resolução maior pode fazer o processo de exportação demorar mais e pode resultar em tamanho maior de arquivo em vídeo.</p>
                 <div id="exportFileHint" class="small text-white-50 mb-3" aria-live="polite"></div>
                 <div id="exportProgress" class="progress mb-3 d-none" style="height: 24px;">
                     <div id="exportBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%">0%</div>

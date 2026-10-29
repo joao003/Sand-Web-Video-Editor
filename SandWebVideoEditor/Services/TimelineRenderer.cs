@@ -26,7 +26,7 @@ public sealed class TimelineRenderer
     public async Task RenderAsync(RenderTimelineRequest req, string outputPath, string workDir,
                                   Action<double> onProgress, CancellationToken ct)
     {
-        var (w, h) = req.Height switch { 480 => (854, 480), 1080 => (1920, 1080), _ => (1280, 720) };
+        var (w, h) = req.Height switch { 480 => (854, 480), 1080 => (1920, 1080), 1440 => (2560, 1440), 2160 => (3840, 2160), _ => (1280, 720) };
         const int fps = 30;
 
         var items = Resolve(req.Items, req.SessionId);
