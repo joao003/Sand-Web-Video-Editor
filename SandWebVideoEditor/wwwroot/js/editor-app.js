@@ -506,12 +506,41 @@
   const markSaved = () => { savedSnap = C.snapshot(state.project); };
   const isDirty = () => items().length > 0 && C.snapshot(state.project) !== savedSnap;
 
-  function newProject() {
-    if (items().length && !confirm('Descartar o projeto atual? (dá para desfazer com Ctrl+Z)')) return;
+  async function clearCollection() {
+    let failed = 0;
+    mediaOps++;
+    try {
+      await Promise.all([...state.media.keys()].map(async (id) => {
+        try {
+          const res = await api('/Home/DeleteMedia?id=' + encodeURIComponent(id), { method: 'POST' });
+          if (res.ok || res.status === 404) state.media.delete(id); else failed++;
+        } catch { failed++; }
+      }));
+    } finally { mediaOps--; }
+    renderMediaList();
+    return failed;
+  }
+
+  async function newProject() {
+    if (mediaOps > 0) { notify('Espere terminar os envios e remoções de mídia em andamento para começar um novo projeto.', 'warning'); return; }
+    const files = state.media.size;
+
+    if (items().length || files) {
+      const lines = [];
+      if (items().length) lines.push('O projeto atual será descartado' + (isDirty() ? ' (há alterações não salvas).' : '.'));
+      if (files) lines.push(files === 1 ? 'A mídia da coleção será apagada.' : 'As ' + files + ' mídias da coleção serão apagadas.');
+      if (!confirm('Começar um novo projeto?\n\n' + lines.join('\n') + '\n\nIsso não pode ser desfeito.')) return;
+    }
+
     preview.pause();
     edit(() => { state.project.projectName = 'Novo Projeto'; state.project.items = []; state.selectedId = null; });
+    const failed = await clearCollection();
+    history.reset();
+    updateUi();
+
     preview.seek(0);
     markSaved();
+    if (failed) notify(failed === 1 ? 'Uma mídia não pôde ser apagada da coleção. Remova-a pelo "×" do cartão.' : failed + ' mídias não puderam ser apagadas da coleção. Remova-as pelo "×" dos cartões.', 'warning');
   }
 
   let packaging = false;
