@@ -4,7 +4,7 @@ O Sand Web Video Editor é um aplicativo de edição de vídeo feito para rodar 
 
 # Recursos
 
-![img](https://github.com/joao003/Sand-Web-Video-Editor/blob/main/sandwebvideoeditorscreenshot.png)
+<img width="1920" height="939" alt="sandwebvideoeditorscreenshot" src="https://github.com/user-attachments/assets/751cad6e-9db5-4c6f-9241-f5945f7b7386" />
 
 * O aplicativo foi codificado em ASP.NET MVC Razor, Blazor WebAssembly, C#, HTML, JavaScript e CSS
 * O frontend do aplicativo é feito em Bootstrap
