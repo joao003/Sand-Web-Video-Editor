@@ -17,7 +17,7 @@ Sand Web Video Editor is a video editing application designed to run directly in
 * Video rendering is performed using FFmpeg
 * Works on desktops, laptops, smartphones, and tablets, supporting both keyboard/mouse and touchscreen inputs, though using a keyboard and mouse is recommended
 
-# Video made with Sand Web Video Editor Demonstration
+# Sand Web Video Editor Demonstration Video
 
 https://github.com/user-attachments/assets/30eb807c-343b-4d00-9423-450c06843b46
 
