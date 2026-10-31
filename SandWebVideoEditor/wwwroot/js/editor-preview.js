@@ -7,6 +7,7 @@
   const DRIFT_PLAYING = 0.3;
   const DRIFT_PAUSED = 0.05;
   const STALL_MAX_MS = 3000;
+  const STALL_RESET_MS = 500;
 
   const CSS_FILTER = {
     none: 'none', grayscale: 'grayscale(1)', sepia: 'sepia(1)',
@@ -24,6 +25,8 @@
      * @param {number} [o.outHeight=720]
      * @param {(t:number, end:number)=>void} [o.onTime]
      * @param {(playing:boolean)=>void} [o.onState]
+     * @param {(item:object)=>void} [o.onMediaError]
+     * @param {(err:Error, where:string)=>void} [o.onError]
      */
     constructor(o) {
       this.videosEl = o.videosEl;
@@ -32,6 +35,8 @@
       this.outHeight = o.outHeight || 720;
       this.onTime = o.onTime || (() => {});
       this.onState = o.onState || (() => {});
+      this.onMediaError = o.onMediaError || (() => {});
+      this.onError = o.onError || (() => {});
 
       this._t = 0;
       this._end = 0;
@@ -40,6 +45,8 @@
       this._baseNow = 0;
       this._baseT = 0;
       this._stallSince = 0;
+      this._readySince = 0;
+      this._reported = false;
       this._primary = null;
 
       this._v = new Map();
@@ -58,13 +65,16 @@
       this.refresh(true);
       if (this._end <= 0) return;
       if (this._t >= this._end - 0.05) this._t = 0;
-      this._ensureAudioCtx();
+      this._reported = false;
+      this._guard('audio', () => this._ensureAudioCtx());
       this._playing = true;
       this._baseNow = performance.now();
       this._baseT = this._t;
       this._stallSince = 0;
+      this._readySince = 0;
+
       this._sync(this._t, true);
-      this.onState(true);
+      this._guard('onState', () => this.onState(true));
       this._raf = requestAnimationFrame(this._frame);
     }
 
@@ -74,7 +84,7 @@
       cancelAnimationFrame(this._raf);
       for (const r of this._v.values()) if (!r.isImg) r.el.pause();
       for (const r of this._a.values()) r.el.pause();
-      this.onState(false);
+      this._guard('onState', () => this.onState(false));
     }
 
     toggle() { this._playing ? this.pause() : this.play(); }
@@ -120,35 +130,57 @@
 
     _frame(now) {
       if (!this._playing) return;
+      this._guard('frame', () => this._tick(now));
+      if (this._playing) this._raf = requestAnimationFrame(this._frame);
+    }
+
+    _tick(now) {
       let t = this._baseT + (now - this._baseNow) / 1000;
 
-      const p = this._primary;
-      if (p && (p.isImg ? !p.el.complete : (p.el.readyState < 2 || p.el.seeking))) {
+      if (this._guard('stall', () => this._isStalled(this._primary))) {
+        this._readySince = 0;
         if (!this._stallSince) this._stallSince = now;
         if (now - this._stallSince < STALL_MAX_MS) { this._baseNow = now; this._baseT = this._t; t = this._t; }
       } else {
-        this._stallSince = 0;
+        if (!this._readySince) this._readySince = now;
+        if (now - this._readySince >= STALL_RESET_MS) this._stallSince = 0;
       }
 
       if (t >= this._end) {
         this._t = this._end;
         this.pause();
         this._sync(Math.max(0, this._end - 0.04), false);
-        this.onTime(this._t, this._end);
+        this._guard('onTime', () => this.onTime(this._t, this._end));
         return;
       }
       this._t = t;
       this._sync(t, true);
-      this.onTime(t, this._end);
-      this._raf = requestAnimationFrame(this._frame);
+      this._guard('onTime', () => this.onTime(t, this._end));
+    }
+
+    _isStalled(p) {
+      if (!p || p.failed) return false;
+      if (p.isImg) return !p.el.complete;
+      return !p.el.error && (p.el.readyState < 2 || p.el.seeking);
+    }
+
+    _guard(where, fn) {
+      try { return fn(); } catch (err) { this._report(where, err); }
+    }
+
+    _report(where, err) {
+      if (this._reported) return;
+      this._reported = true;
+      try { console.error('[PreviewEngine] erro em ' + where + ':', err); } catch { }
+      try { this.onError(err, where); } catch { }
     }
 
     _sync(t, playing) {
       const items = this.getItems();
       const byId = new Map(items.map(i => [i.id, i]));
-      this._syncVideo(items, t, playing);
-      this._syncAudio(items, byId, t, playing);
-      this._syncTitles(items, t);
+      this._guard('video', () => this._syncVideo(items, t, playing));
+      this._guard('audio', () => this._syncAudio(items, byId, t, playing));
+      this._guard('titles', () => this._syncTitles(items, t));
     }
 
     _syncVideo(items, t, playing) {
@@ -162,14 +194,17 @@
         const near = isActive || (t < start && start - t <= PRELOAD) || (t >= end && t - end <= KEEP);
         if (!near) continue;
         keep.add(it.id);
-        const rec = this._ensure(this._v, it, () => this._makeVideo(it), !!it.isImage);
-        const base = it.startTime || 0;
-        if (isActive) {
-          if (!rec.isImg) this._drive(rec, base + (t - start), playing, true);
-          active.push(it);
-        } else if (!rec.isImg) {
-          this._drive(rec, t < start ? base : Math.max(0, base + C.dur(it) - 0.05), false, false);
-        }
+
+        this._guard('video:' + it.id, () => {
+          const rec = this._ensure(this._v, it, () => this._makeVideo(it), !!it.isImage);
+          const base = it.startTime || 0;
+          if (isActive) {
+            if (!rec.isImg) this._drive(rec, base + (t - start), playing, true);
+            active.push(it);
+          } else if (!rec.isImg) {
+            this._drive(rec, t < start ? base : Math.max(0, base + C.dur(it) - 0.05), false, false);
+          }
+        });
       }
       for (const id of [...this._v.keys()]) if (!keep.has(id)) this._drop(this._v, id);
 
@@ -244,7 +279,7 @@
         if (rec.isImg) continue;
         const it = byId.get(id);
         const on = it && t >= it.timelineStartTime && t < C.itemEnd(it);
-        this._setGain(rec, on && !it.isMuted ? C.clampVolume(it.volume ?? 1) * C.fadeFactor(it, t) : 0);
+        this._guard('gain:' + id, () => this._setGain(rec, on && !it.isMuted ? C.clampVolume(it.volume ?? 1) * C.fadeFactor(it, t) : 0));
       }
 
       const keep = new Set();
@@ -255,16 +290,18 @@
         const near = isActive || (t < start && start - t <= PRELOAD);
         if (!near) continue;
         keep.add(it.id);
-        const rec = this._ensure(this._a, it, () => {
-          const el = new Audio();
-          el.preload = 'auto';
-          el.src = it.mediaUrl;
-          return el;
+        this._guard('audio:' + it.id, () => {
+          const rec = this._ensure(this._a, it, () => {
+            const el = new Audio();
+            el.preload = 'auto';
+            el.src = it.mediaUrl;
+            return el;
+          });
+          const base = it.startTime || 0;
+          if (isActive) this._drive(rec, base + (t - start), playing, true);
+          else this._drive(rec, base, false, false);
+          this._setGain(rec, isActive && !it.isMuted ? C.clampVolume(it.volume ?? 1) : 0);
         });
-        const base = it.startTime || 0;
-        if (isActive) this._drive(rec, base + (t - start), playing, true);
-        else this._drive(rec, base, false, false);
-        this._setGain(rec, isActive && !it.isMuted ? C.clampVolume(it.volume ?? 1) : 0);
       }
       for (const id of [...this._a.keys()]) if (!keep.has(id)) this._drop(this._a, id);
     }
@@ -299,9 +336,14 @@
       let rec = map.get(it.id);
       if (rec && rec.url === it.mediaUrl && rec.isImg === isImg) return rec;
       if (rec) this._drop(map, it.id);
-      rec = { el: make(), url: it.mediaUrl, gain: null, node: null, isImg };
+      rec = { el: make(), url: it.mediaUrl, gain: null, node: null, isImg, failed: false };
       this._attachGain(rec);
       map.set(it.id, rec);
+      rec.el.addEventListener('error', () => {
+        if (map.get(it.id) !== rec || rec.failed) return;
+        rec.failed = true;
+        this._guard('onMediaError', () => this.onMediaError(it));
+      });
       return rec;
     }
 

@@ -19,9 +19,18 @@
     </div>
 
     <footer class="border-top footer text-white" style="background: #000000; background: linear-gradient(153deg,rgba(0, 0, 0, 1) 0%, rgba(48, 48, 48, 1) 78%);">
-        <div class="container">
-            &copy; 2026 - Sand Web Video Editor
-            <a href="https://github.com/joao003/Sand-Web-Video-Editor"><img src="~/githublogo.png" alt="GitHub" width="30" height="30" /></a>
+        <div class="container d-flex align-items-center justify-content-between gap-2">
+            <span class="footer-copy">
+                &copy; 2026 - Sand Web Video Editor
+                <a href="https://github.com/joao003/Sand-Web-Video-Editor"><img src="~/githublogo.png" alt="GitHub" width="30" height="30" /></a>
+            </span>
+            <span class="lang-picker d-flex align-items-center gap-2">
+                <label for="langSelect" class="small d-none d-sm-inline" data-i18n="footer.language">Idioma:</label>
+                <select id="langSelect" class="form-select form-select-sm lang-select" aria-label="Idioma" data-i18n-attr="aria-label:footer.languageAria">
+                    <option value="pt" selected>Português</option>
+                    <option value="en">English</option>
+                </select>
+            </span>
         </div>
     </footer>
     <script src="_framework/blazor.webassembly.js"></script>

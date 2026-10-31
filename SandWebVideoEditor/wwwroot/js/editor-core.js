@@ -9,6 +9,11 @@
   const EFFECTS = ['none', 'grayscale', 'sepia', 'bright', 'blur', 'negate'];
   const POSITIONS = ['top', 'center', 'bottom'];
 
+  const i18n = () => root.EditorI18n || (typeof require === 'function' ? require('./editor-i18n.js') : null);
+  const tr = (key, params) => { const m = i18n(); return m ? m.t(key, params) : key; };
+  const fail = (key, params) => { const m = i18n(); return m ? m.keyError(key, params) : new Error(key); };
+  const failServer = (text) => { const m = i18n(); return m ? m.serverError(text) : new Error(text); };
+
   const uuid = () => 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
   const dur = (it) => Math.max(MIN_CLIP, Number(it.duration) || MIN_CLIP);
   const itemEnd = (it) => it.timelineStartTime + dur(it);
@@ -122,16 +127,16 @@
     return {
       id: uuid(), type: 2, assetId: null, mediaUrl: '',
       timelineStartTime, startTime: 0, duration: 5,
-      text: 'Novo título', fontSize: 36, fontColor: 'white', textPosition: 'center',
+      text: tr('title.newText'), fontSize: 36, fontColor: 'white', textPosition: 'center',
     };
   }
 
   function detachAudio(items, videoItemId, hasAudio = true) {
     const v = items.find(i => i.id === videoItemId);
-    if (!v || v.type !== 0) throw new Error('Selecione um clipe de vídeo.');
-    if (v.isImage) throw new Error('Imagens não têm áudio.');
-    if (!hasAudio) throw new Error('Esse vídeo não tem faixa de áudio.');
-    if (v.isMuted) throw new Error('O áudio desse clipe já foi separado/silenciado.');
+    if (!v || v.type !== 0) throw fail('detach.notVideo');
+    if (v.isImage) throw fail('detach.image');
+    if (!hasAudio) throw fail('detach.noAudio');
+    if (v.isMuted) throw fail('detach.already');
     v.isMuted = true;
     const a = {
       id: uuid(), type: 1, assetId: v.assetId, mediaUrl: v.mediaUrl,
@@ -150,26 +155,25 @@
     return c;
   }
 
-  const SPLIT_MSG = {
-    none: 'Selecione um clipe na timeline para dividir.',
-    outside: 'Posicione o cursor sobre o clipe selecionado para dividi-lo.',
-    short: 'Cada parte precisa ter pelo menos ' + MIN_CLIP.toString().replace('.', ',') + ' s.',
-    transition: 'O cursor está dentro de uma transição. Mova-o um pouco para dentro do clipe.',
+  const splitMessage = (reason) => {
+    const m = i18n();
+    return tr('split.' + reason, { min: m ? m.num(MIN_CLIP) : String(MIN_CLIP) });
   };
+
   const round6 = (x) => Math.round(x * 1e6) / 1e6;
 
   function splitCheck(items, id, t) {
     const it = items.find(i => i.id === id);
-    if (!it) return { ok: false, reason: 'none', message: SPLIT_MSG.none };
+    if (!it) return { ok: false, reason: 'none', message: splitMessage('none') };
     const start = it.timelineStartTime, total = dur(it);
-    if (!(t > start && t < start + total)) return { ok: false, reason: 'outside', message: SPLIT_MSG.outside };
+    if (!(t > start && t < start + total)) return { ok: false, reason: 'outside', message: splitMessage('outside') };
 
     const grid = it.type === 0 ? 1 / FPS : 0.001;
     const offset = round6(Math.round((t - start) / grid) * grid);
-    if (offset < MIN_CLIP || total - offset < MIN_CLIP) return { ok: false, reason: 'short', message: SPLIT_MSG.short };
+    if (offset < MIN_CLIP || total - offset < MIN_CLIP) return { ok: false, reason: 'short', message: splitMessage('short') };
 
     if (it.type === 0 && (offset < (it._trIn || 0) + 0.05 || total - offset < (it._trOut || 0) + 0.05))
-      return { ok: false, reason: 'transition', message: SPLIT_MSG.transition };
+      return { ok: false, reason: 'transition', message: splitMessage('transition') };
     return { ok: true, reason: '', message: '', at: round6(start + offset), offset };
   }
 
@@ -220,10 +224,10 @@
     let raw = input;
 
     if (typeof input === 'string') {
-      try { raw = JSON.parse(input); } catch { throw new Error('Arquivo de projeto inválido.'); }
+      try { raw = JSON.parse(input); } catch { throw fail('open.invalid'); }
     }
 
-    if (!raw || !Array.isArray(raw.items)) throw new Error('Arquivo de projeto inválido.');
+    if (!raw || !Array.isArray(raw.items)) throw fail('open.invalid');
 
     const num = (v, d, min = -Infinity, max = Infinity) => { const n = Number(v); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : d; };
     const items = [];
@@ -261,7 +265,7 @@
       }
       items.push(it);
     }
-    return { project: { projectName: String(raw.projectName || 'Projeto').slice(0, 80), items }, missing };
+    return { project: { projectName: String(raw.projectName || tr('project.fallbackName')).slice(0, 80), items }, missing };
   }
 
   function fmtTime(t) {
@@ -270,7 +274,7 @@
     return String(m).padStart(2, '0') + ':' + s.toFixed(1).padStart(4, '0');
   }
 
-  const EXPORT_NAME_DEFAULT = 'video-editado', EXPORT_NAME_MAX = 100;
+  const EXPORT_NAME_MAX = 100;
   const cleanName = (n) => n.replace(/\s+/g, ' ').replace(/-{2,}/g, '-').replace(/^[ .-]+|[ .-]+$/g, '');
   function finishName(n) {
     for (;;) {
@@ -287,7 +291,7 @@
       if (/[\ud800-\udbff]$/.test(name)) name = name.slice(0, -1);
       name = finishName(name);
     }
-    return (name || EXPORT_NAME_DEFAULT) + '.mp4';
+    return (name || tr('export.defaultName')) + '.mp4';
   }
 
   function downloadHref(url, name) {
@@ -328,7 +332,7 @@
     if (head.length < PKG_MAGIC.length + 4) return null;
     for (let i = 0; i < PKG_MAGIC.length; i++) if (head[i] !== PKG_MAGIC.charCodeAt(i)) return null;
 
-    const bad = () => new Error('Arquivo de projeto inválido ou incompleto.');
+    const bad = () => fail('open.incomplete');
     const headerLen = new DataView(head.buffer).getUint32(PKG_MAGIC.length, true);
     const bodyStart = PKG_MAGIC.length + 4;
     if (headerLen > MAX_PACKAGE_HEADER || bodyStart + headerLen > file.size) throw bad();
@@ -356,13 +360,15 @@
       body: JSON.stringify({ height, items }, dropPrivate),
     });
 
-    if (!res.ok) throw new Error((await res.text()) || 'Não foi possível iniciar a exportação. Erro: ' + res.status);
+    if (!res.ok) {
+      const body = await res.text();
+      throw body ? failServer(body) : fail('export.startFail', { status: res.status });
+    }
 
     let jobId;
     try { ({ jobId } = await res.json()); } catch { }
-    if (!jobId) throw new Error('O servidor não iniciou a exportação. Tente novamente.');
+    if (!jobId) throw fail('export.notStarted');
 
-    const LOST = 'O servidor interrompeu a exportação, possívelmente ele pode ter reiniciado por falta de memória. Tente novamente. Se esse erro persistir, exporte uma timeline com menos clipes.';
     let failures = 0;
 
     for (;;) {
@@ -377,10 +383,10 @@
         try { s = body ? JSON.parse(body) : null; } catch { s = null; }
       } catch { }
 
-      if (status === 404) throw new Error(LOST);
+      if (status === 404) throw fail('export.lost');
 
       if (!s || status < 200 || status >= 300 || typeof s.state !== 'string') {
-        if (++failures >= 5) throw new Error(LOST);
+        if (++failures >= 5) throw fail('export.lost');
         continue;
       }
 
@@ -388,7 +394,7 @@
 
       onProgress(s.progress, s.state);
       if (s.state === 'Done') return s.url;
-      if (s.state === 'Failed') throw new Error(s.error || 'Falha ao renderizar.');
+      if (s.state === 'Failed') throw s.error ? failServer(s.error) : fail('export.renderFail');
     }
   }
 

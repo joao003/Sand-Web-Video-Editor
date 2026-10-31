@@ -2,12 +2,14 @@
   'use strict';
 
   const C = window.EditorCore;
+  const I18n = window.EditorI18n;
+  const t = I18n.t;
   const $ = (id) => document.getElementById(id);
   const num = (v, d) => { const n = parseFloat(v); return Number.isFinite(n) ? n : d; };
   const snap01 = (x) => Math.round(x * 10) / 10;
 
   const state = {
-    project: { projectName: 'Novo Projeto', items: [] },
+    project: { projectName: t('project.defaultName'), items: [] },
     selectedId: null,
     media: new Map(),
     clipboard: null,
@@ -15,7 +17,7 @@
   };
 
   const SID = C.newSessionId();
-  const api = (url, init = {}) => fetch(url, { ...init, headers: { ...(init.headers || {}), 'X-Sand-Session': SID}});
+  const api = (url, init = {}) => fetch(url, { ...init, headers: { ...(init.headers || {}), 'X-Sand-Session': SID } });
   let mediaOps = 0;
 
   const items = () => state.project.items;
@@ -38,24 +40,35 @@
   function edit(fn) { fn(); refreshAll(); commit(); }
   function refreshAll() { C.layoutVideoTrack(items()); renderTimeline(); renderProperties(); preview.refresh(); updateUi(); }
 
+  const warnedMedia = new Set();
+
   const preview = new window.EditorPreview.PreviewEngine({
     videosEl: $('stageVideos'),
     titlesEl: $('stageTitles'),
     getItems: items,
     outHeight: 720,
     onTime: onTime,
+    onMediaError: (it) => {
+      if (warnedMedia.has(it.mediaUrl)) return;
+      warnedMedia.add(it.mediaUrl);
+      const a = assetOf(it);
+      notify(t('player.mediaError', { name: a ? a.originalName : decodeURIComponent(String(it.mediaUrl).split('/').pop().split('?')[0]) }), 'warning');
+    },
+    onError: (err) => notify(t('player.error', { message: (err && err.message) || String(err) }), 'danger'),
     onState: (playing) => { $('btnPlay').innerHTML = playing ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pause-fill" viewBox="0 0 16 16">
   <path d="M5.5 3.5A1.5 1.5 0 0 1 7 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5m5 0A1.5 1.5 0 0 1 12 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5"/>
 </svg>` : `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-play-fill" viewBox="0 0 16 16">
   <path d="m11.596 8.697-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393"/>
-</svg>`; $('btnPlay').setAttribute('aria-label', playing ? 'Pausar' : 'Reproduzir'); wakeControls(); },
+</svg>`; syncPlayLabel(playing); wakeControls(); },
   });
 
-  function onTime(t, end) {
-    $('timeLabel').textContent = C.fmtTime(t) + ' / ' + C.fmtTime(end);
+  const syncPlayLabel = (playing) => $('btnPlay').setAttribute('aria-label', t(playing ? 'player.pause' : 'player.play'));
+
+  function onTime(time, end) {
+    $('timeLabel').textContent = C.fmtTime(time) + ' / ' + C.fmtTime(end);
     const seek = $('seekBar');
-    if (!seek.matches(':active')) seek.value = end > 0 ? Math.round((t / end) * 1000) : 0;
-    const x = t * state.pps;
+    if (!seek.matches(':active')) seek.value = end > 0 ? Math.round((time / end) * 1000) : 0;
+    const x = time * state.pps;
     $('playhead').style.left = x + 'px';
     if (preview.playing) {
       const sc = $('timelineScroll');
@@ -69,7 +82,7 @@
     try {
       const list = await (await api('/Home/Media')).json();
       state.media = new Map(list.map(a => [a.id, a]));
-    } catch { notify('Não foi possível carregar a coleção de mídias.', 'danger'); }
+    } catch { notify(t('media.loadFail'), 'danger'); }
     renderMediaList();
   }
 
@@ -104,28 +117,27 @@
       dur.className = 'text-muted d-block'; dur.innerHTML = a.isImage ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-image" viewBox="0 0 16 16">
   <path d="M6.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0"/>
   <path d="M2.002 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2zm12 1a1 1 0 0 1 1 1v6.5l-3.777-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062L1.002 12V3a1 1 0 0 1 1-1z"/>
-</svg> Imagem` : C.fmtTime(a.duration);
+</svg> ${t('media.image')}` : C.fmtTime(a.duration);
       const row = document.createElement('div');
       row.className = 'd-flex gap-1 mt-1';
       const del = document.createElement('button');
-      del.className = 'btn btn-sm btn-outline-danger'; del.textContent = '×'; del.title = 'Remover da coleção';
+      del.className = 'btn btn-sm btn-outline-danger'; del.textContent = '×'; del.title = t('media.remove');
       del.dataset.del = a.id;
-
       if (a.isAudioOnly) {
+
         const group = document.createElement('div');
         group.className = 'dropdown flex-grow-1 d-flex';
         const toggle = document.createElement('button');
         toggle.type = 'button';
         toggle.className = 'btn btn-sm btn-primary flex-grow-1 dropdown-toggle';
-        toggle.textContent = '+'; toggle.title = 'Adicionar à timeline';
+        toggle.textContent = '+'; toggle.title = t('media.add');
         toggle.setAttribute('data-bs-toggle', 'dropdown');
         toggle.setAttribute('data-bs-popper-config', '{"strategy":"fixed"}');
         toggle.setAttribute('aria-expanded', 'false');
         const menu = document.createElement('ul');
         menu.className = 'dropdown-menu';
         menu.setAttribute('data-bs-theme', 'dark');
-        menu.style = "background: #000000; background: linear-gradient(153deg,rgba(0, 0, 0, 1) 0%, rgba(48, 48, 48, 1) 78%);";
-        for (const [track, label] of [[0, 'Primeira Trilha de Áudio/Música'], [1, 'Segunda Trilha de Áudio/Música']]) {
+        for (const [track, label] of [[0, t('audio.track1')], [1, t('audio.track2')]]) {
           const li = document.createElement('li');
           const item = document.createElement('button');
           item.type = 'button'; item.className = 'dropdown-item small'; item.textContent = label;
@@ -136,11 +148,10 @@
         row.append(group, del);
       } else {
         const add = document.createElement('button');
-        add.className = 'btn btn-sm btn-primary flex-grow-1'; add.textContent = '+'; add.title = 'Adicionar à timeline';
+        add.className = 'btn btn-sm btn-primary flex-grow-1'; add.textContent = '+'; add.title = t('media.add');
         add.dataset.add = a.id;
         row.append(add, del);
       }
-
       body.append(name, dur, row);
       card.append(thumb, body);
       box.appendChild(card);
@@ -152,45 +163,38 @@
     fd.append('file', file);
     if (restoreId) fd.append('restoreId', restoreId);
     const res = await api('/Home/UploadMedia', { method: 'POST', body: fd });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) throw I18n.serverError(await res.text());
     const a = await res.json();
     state.media.set(a.id, a);
     renderMediaList();
     return a;
   }
 
-
   async function uploadFiles(files, addToTimeline = false) {
     const status = $('uploadStatus');
-
     mediaOps++;
-
     try {
       for (const file of files) {
-        status.textContent = 'Enviando ' + file.name + '...';
+        status.textContent = t('upload.sending', { name: file.name });
         try {
           const a = await uploadOne(file);
           if (addToTimeline) addAssetToTimeline(a);
-        } catch (err) { notify('Falha ao enviar "' + file.name + '": ' + err.message, 'danger'); }
+        } catch (err) { notify(t('upload.fail', { name: file.name, error: err.message }), 'danger'); }
       }
     } finally { mediaOps--; }
-
     status.textContent = '';
     $('mediaUpload').value = '';
   }
 
   async function deleteAsset(id) {
     const used = items().filter(i => i.assetId === id);
-    if (used.length && !confirm('Esta mídia é usada em ' + used.length + ' clipe(s) da timeline. Remover tudo?')) return;
-    
+    if (used.length && !confirm(t('media.deleteConfirm', { n: used.length }))) return;
     mediaOps++;
-    
     try {
       const res = await api('/Home/DeleteMedia?id=' + encodeURIComponent(id), { method: 'POST' });
-      if (!res.ok && res.status !== 404) { notify('Não foi possível remover a mídia.', 'danger'); return; }
+      if (!res.ok && res.status !== 404) { notify(t('media.deleteFail'), 'danger'); return; }
       state.media.delete(id);
     } finally { mediaOps--; }
-
     renderMediaList();
     if (used.length) edit(() => { state.project.items = items().filter(i => i.assetId !== id); if (!byId(state.selectedId)) state.selectedId = null; });
   }
@@ -209,8 +213,8 @@
   }
 
   const TRACK_BG = ['bg-success', 'bg-primary', 'bg-black'];
-
   const bgOf = (it) => (it.type === 1 && C.audioTrackOf(it) === 1 ? 'bg-audio-2' : TRACK_BG[it.type]);
+
   const trackElOf = (it) => $(it.type === 1 ? (C.audioTrackOf(it) === 1 ? 'trackAudio2' : 'trackAudio') : ['trackVideo', '', 'trackText'][it.type]);
 
   function itemLabel(it) {
@@ -221,7 +225,7 @@
   <path d="M2.002 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2zm12 1a1 1 0 0 1 1 1v6.5l-3.777-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062L1.002 12V3a1 1 0 0 1 1-1z"/>
 </svg>` : '') + (it.isMuted ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-volume-mute-fill" viewBox="0 0 16 16">
   <path d="M6.717 3.55A.5.5 0 0 1 7 4v8a.5.5 0 0 1-.812.39L3.825 10.5H1.5A.5.5 0 0 1 1 10V6a.5.5 0 0 1 .5-.5h2.325l2.363-1.89a.5.5 0 0 1 .529-.06m7.137 2.096a.5.5 0 0 1 0 .708L12.207 8l1.647 1.646a.5.5 0 0 1-.708.708L11.5 8.707l-1.646 1.647a.5.5 0 0 1-.708-.708L10.793 8 9.146 6.354a.5.5 0 1 1 .708-.708L11.5 7.293l1.646-1.647a.5.5 0 0 1 .708 0"/>
-</svg>` : '') + (a ? a.originalName : '(mídia removida)');
+</svg>` : '') + (a ? a.originalName : t('media.clipRemoved'));
   }
 
   function renderTimeline() {
@@ -253,7 +257,7 @@
         const mark = document.createElement('div');
         mark.className = 'tr-mark';
         mark.style.width = it._trIn * pps + 'px';
-        mark.title = 'Transição: ' + it.transition + ' (' + it._trIn.toFixed(1) + ' s)';
+        mark.title = t('timeline.transitionMark', { name: t('tr.' + it.transition), secs: it._trIn.toFixed(1) });
         clip.appendChild(mark);
       }
 
@@ -263,7 +267,7 @@
       const close = document.createElement('button');
       close.className = 'btn-close btn-sm' + (it.type === 2 ? '' : ' btn-close-white');
       close.dataset.remove = it.id;
-      close.setAttribute('aria-label', 'Remover clipe');
+      close.setAttribute('aria-label', t('timeline.removeClip'));
       const handle = document.createElement('div');
       handle.className = 'resize-handle';
       clip.append(label, close, handle);
@@ -307,7 +311,6 @@
     return y >= (a.bottom + b.top) / 2 ? 1 : 0;
   }
 
-
   function onDragMove(e) {
     if (!drag) return;
     if (drag.mode === 'scrub') { preview.seek(timeAtMouse(e)); return; }
@@ -329,7 +332,6 @@
   function onDragEnd() {
     document.removeEventListener('mousemove', onDragMove);
     document.removeEventListener('mouseup', onDragEnd);
-
     if (drag && drag.id) {
       const it = byId(drag.id);
       if (it) {
@@ -338,21 +340,17 @@
       }
       refreshAll(); commit();
     }
-
     drag = null;
   }
 
-  const TRACK_NAME = ['primeira', 'segunda'];
-
   function settleOnAudioTrack(it, track) {
     const r = C.moveToAudioTrack(items(), it.id, track);
-    if (r && r.pushed) notify('Esse trecho da ' + TRACK_NAME[r.track] + ' trilha já tinha áudio: o clipe foi para o espaço livre mais próximo (' + C.fmtTime(r.to) + ').', 'info');
+    if (r && r.pushed) notify(t('audio.pushed', { track: t('audio.ordinal' + (r.track + 1)), time: C.fmtTime(r.to) }), 'info');
     return r;
   }
 
   const PANELS = { 0: ['panelVideo', 'panelVolume'], 1: ['panelAudioTrack', 'panelVolume'], 2: ['panelText'] };
   const ALL_PANELS = [...new Set(Object.values(PANELS).flat())];
-
 
   function setVal(id, v) { const el = $(id); if (document.activeElement !== el) el.value = v; }
 
@@ -421,7 +419,7 @@
     if (!it) return;
     try {
       edit(() => { C.detachAudio(items(), it.id, !!(assetOf(it) && assetOf(it).hasAudio)); });
-      notify('Áudio separado: agora ele é um clipe na primeira trilha de Áudio/Música.', 'success');
+      notify(t('detach.done'), 'success');
     } catch (err) { notify(err.message, 'warning'); }
   }
 
@@ -434,7 +432,7 @@
     splitKey = key;
     const btn = $('btnSplit');
     btn.classList.toggle('is-inactive', !chk.ok);
-    btn.title = chk.ok ? 'Dividir o clipe selecionado no cursor (S)' : chk.message;
+    btn.title = chk.ok ? t('split.title') : chk.message;
   }
 
   function splitSelected() {
@@ -443,7 +441,7 @@
     try {
       let r;
       edit(() => { r = C.splitItem(items(), state.selectedId, preview.time); });
-      notify('Clipe dividido em ' + C.fmtTime(r.at) + '.', 'success');
+      notify(t('split.done', { time: C.fmtTime(r.at) }), 'success');
     } catch (err) { notify(err.message, 'warning'); }
   }
 
@@ -462,8 +460,8 @@
     const p = $('player'), on = isFullscreen();
     p.classList.toggle('is-fs', on);
     document.body.classList.toggle('fs-lock', on);
-    $('btnFullscreen').setAttribute('aria-label', on ? 'Sair da tela cheia' : 'Tela cheia');
-    $('btnFullscreen').title = on ? 'Sair da tela cheia (F ou Esc)' : 'Tela cheia (F)';
+    $('btnFullscreen').setAttribute('aria-label', t(on ? 'player.exitFullscreen' : 'player.fullscreen'));
+    $('btnFullscreen').title = t(on ? 'player.exitFullscreenTitle' : 'player.fullscreenTitle');
     wakeControls();
   }
 
@@ -497,7 +495,7 @@
   function pasteClipboard() {
     if (!state.clipboard) return;
     const src = JSON.parse(state.clipboard);
-    if (src.type !== 2 && !state.media.has(src.assetId)) { notify('A mídia desse clipe não existe mais.', 'warning'); return; }
+    if (src.type !== 2 && !state.media.has(src.assetId)) { notify(t('paste.missing'), 'warning'); return; }
     const c = C.cloneItem(src, snap01(preview.time));
     edit(() => { items().push(c); state.selectedId = c.id; });
   }
@@ -522,35 +520,31 @@
   }
 
   async function newProject() {
-    if (mediaOps > 0) { notify('Espere terminar os envios e remoções de mídia em andamento para começar um novo projeto.', 'warning'); return; }
+    if (mediaOps > 0) { notify(t('newProject.busy'), 'warning'); return; }
     const files = state.media.size;
-
     if (items().length || files) {
       const lines = [];
-      if (items().length) lines.push('O projeto atual será descartado' + (isDirty() ? ' (há alterações não salvas).' : '.'));
-      if (files) lines.push(files === 1 ? 'A mídia da coleção será apagada.' : 'As ' + files + ' mídias da coleção serão apagadas.');
-      if (!confirm('Começar um novo projeto?\n\n' + lines.join('\n') + '\n\nIsso não pode ser desfeito.')) return;
+      if (items().length) lines.push(t(isDirty() ? 'newProject.discardDirty' : 'newProject.discard'));
+      if (files) lines.push(files === 1 ? t('newProject.deleteOne') : t('newProject.deleteMany', { n: files }));
+      if (!confirm(t('newProject.confirm', { lines: lines.join('\n') }))) return;
     }
-
     preview.pause();
-    edit(() => { state.project.projectName = 'Novo Projeto'; state.project.items = []; state.selectedId = null; });
+    edit(() => { state.project.projectName = t('project.defaultName'); state.project.items = []; state.selectedId = null; });
     const failed = await clearCollection();
     history.reset();
     updateUi();
-
     preview.seek(0);
     markSaved();
-    if (failed) notify(failed === 1 ? 'Uma mídia não pôde ser apagada da coleção. Remova-a pelo "×" do cartão.' : failed + ' mídias não puderam ser apagadas da coleção. Remova-as pelo "×" dos cartões.', 'warning');
+    if (failed) notify(failed === 1 ? t('newProject.failOne') : t('newProject.failMany', { n: failed }), 'warning');
   }
 
   let packaging = false;
 
   async function saveProject() {
     if (packaging) return;
-
-    const name = prompt('Nome do projeto:', state.project.projectName);
+    const name = prompt(t('save.prompt'), displayName());
     if (name === null) return;
-    state.project.projectName = name.trim() || 'Projeto';
+    state.project.projectName = name.trim() || t('project.fallbackName');
     packaging = true;
     const status = $('uploadStatus');
     let skipped = 0;
@@ -563,7 +557,7 @@
           if (!res.ok) throw new Error('HTTP ' + res.status);
           return { name: asset.originalName, blob: await res.blob() };
         } catch { skipped++; return null; }
-      }, (n, total) => { status.textContent = 'Empacotando mídias (' + (n + 1) + '/' + total + ')...'; });
+      }, (n, total) => { status.textContent = t('save.packing', { n: n + 1, total }); });
 
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -571,9 +565,9 @@
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 60000);
       markSaved();
-      if (skipped) notify(skipped + ' mídia(s) não puderam ser incluídas no arquivo do projeto.', 'warning');
+      if (skipped) notify(t('save.skipped', { n: skipped }), 'warning');
     } catch (err) {
-      notify('Não foi possível salvar o projeto: ' + err.message, 'danger');
+      notify(t('save.fail', { error: err.message }), 'danger');
     } finally {
       packaging = false;
       status.textContent = '';
@@ -594,7 +588,7 @@
         for (let n = 0; n < pkg.media.length; n++) {
           const m = pkg.media[n];
           if (state.media.has(m.id)) continue;
-          status.textContent = 'Restaurando mídia ' + (n + 1) + '/' + pkg.media.length + ': ' + m.name;
+          status.textContent = t('open.restoring', { n: n + 1, total: pkg.media.length, name: m.name });
           try { await uploadOne(new File([m.blob], m.name), m.id); } catch { failed++; }
         }
       } else raw = await file.text();
@@ -603,8 +597,8 @@
       edit(() => { state.project.projectName = project.projectName; state.project.items = project.items; state.selectedId = null; });
       preview.seek(0);
       markSaved();
-      if (failed) notify(failed + ' mídia(s) do projeto não puderam ser restauradas; os clipes delas foram ignorados.', 'warning');
-      else if (missing) notify(missing + ' clipe(s) foram ignorados porque a mídia não existe nesta coleção.', 'warning');
+      if (failed) notify(t('open.failed', { n: failed }), 'warning');
+      else if (missing) notify(t('open.missing', { n: missing }), 'warning');
     } catch (err) { notify(err.message, 'danger'); }
     finally { mediaOps--; status.textContent = ''; }
     $('fileProjectInput').value = '';
@@ -614,23 +608,22 @@
 
   function suggestedExportName() {
     const n = (state.project.projectName || '').trim();
-    return n && n !== 'Novo Projeto' ? n : '';
+    return n && !I18n.isDefaultProjectName(n) ? n : '';
   }
 
   function refreshExportName() {
     const file = C.exportFileName($('exportFileName').value);
-    $('exportFileHint').textContent = 'Será salvo como: ' + file;
+    $('exportFileHint').textContent = t('export.willSave', { file });
     if (lastExportUrl) {
       $('exportDownload').href = C.downloadHref(lastExportUrl, $('exportFileName').value);
       $('exportDownload').download = file;
     }
   }
 
-
   function openExport() {
     preview.pause();
     $('exportResult').classList.add('d-none');
-    $('exportError').classList.add('d-none');
+    hideExportError();
     $('exportProgress').classList.add('d-none');
     $('btnStartExport').disabled = false;
     lastExportUrl = '';
@@ -642,46 +635,50 @@
 
   async function startExport() {
     if (!items().some(i => i.type !== 2 || (i.text || '').trim() !== '')) {
-      showExportError(items().length ? 'Os títulos estão sem texto: escreva algum texto ou adicione um clipe à timeline.' : 'A timeline está vazia: adicione um clipe ou um título.');
+      showExportError(I18n.keyError(items().length ? 'export.emptyTitles' : 'export.emptyTimeline'));
       return;
     }
-
     $('btnStartExport').disabled = true;
-    $('exportError').classList.add('d-none');
+    hideExportError();
     $('exportResult').classList.add('d-none');
     lastExportUrl = '';
     const bar = $('exportBar');
     $('exportProgress').classList.remove('d-none');
-    bar.style.width = '0%'; bar.textContent = 'Na fila...';
+    bar.style.width = '0%'; bar.textContent = t('export.queued');
     try {
       const url = await C.exportProject(items(), {
         height: parseInt($('exportHeight').value, 10),
         sessionId: SID,
-        onProgress: (p, st) => { bar.style.width = p + '%'; bar.textContent = st === 'Queued' ? 'Na fila...' : Math.round(p) + '%'; },
+        onProgress: (p, st) => { bar.style.width = p + '%'; bar.textContent = st === 'Queued' ? t('export.queued') : Math.round(p) + '%'; },
       });
       bar.style.width = '100%'; bar.textContent = '100%';
       $('exportVideo').src = url;
       lastExportUrl = url;
       refreshExportName();
       $('exportResult').classList.remove('d-none');
-    } catch (err) { showExportError(err.message); }
+    } catch (err) { showExportError(err); }
     $('btnStartExport').disabled = false;
   }
 
-  function showExportError(msg) { const e = $('exportError'); e.textContent = msg; e.classList.remove('d-none'); $('btnStartExport').disabled = false; }
+  let exportError = null;
+  function renderExportError() { if (exportError) $('exportError').textContent = I18n.errorText(exportError); }
+  function showExportError(err) { exportError = err; renderExportError(); $('exportError').classList.remove('d-none'); $('btnStartExport').disabled = false; }
+  function hideExportError() { exportError = null; $('exportError').classList.add('d-none'); }
 
   let toastTimer = 0;
   function notify(msg, kind = 'info') {
-    const t = $('toast');
-    t.className = 'alert alert-' + kind + ' shadow';
-    t.textContent = msg;
-    t.classList.remove('d-none');
+    const box = $('toast');
+    box.className = 'alert alert-' + kind + ' shadow';
+    box.textContent = msg;
+    box.classList.remove('d-none');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => t.classList.add('d-none'), 4000);
+    toastTimer = setTimeout(() => box.classList.add('d-none'), 4000);
   }
 
+  const displayName = () => (I18n.isDefaultProjectName(state.project.projectName) ? t('project.defaultName') : state.project.projectName);
+
   function updateUi() {
-    $('projectNameDisplay').textContent = state.project.projectName;
+    $('projectNameDisplay').textContent = displayName();
     document.querySelector('[data-action="desfazer"]').classList.toggle('disabled', !history.canUndo);
     document.querySelector('[data-action="refazer"]').classList.toggle('disabled', !history.canRedo);
     $('stageEmpty').classList.toggle('d-none', items().length > 0);
@@ -794,6 +791,18 @@
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') heartbeat(); });
     setInterval(heartbeat, 60000);
 
+    I18n.onChange(() => {
+      splitKey = null;
+      syncPlayLabel(preview.playing);
+      syncFullscreenUi();
+      renderMediaList();
+      renderExportError();
+      refreshAll();
+      refreshExportName();
+    });
+
+    syncPlayLabel(false);
+    syncFullscreenUi();
     refreshAll();
     markSaved();
     loadMedia();
@@ -812,11 +821,10 @@
       const { count } = await res.json();
       if (count === 0 && state.media.size > 0 && mediaOps === 0) {
         await loadMedia();
-        notify('As mídias expiraram no servidor por inatividade. Abra o projeto salvo para restaurá-las.', 'warning');
+        notify(t('session.expired'), 'warning');
       }
     } catch { }
   }
-
 
   window.Editor = { state, history, preview, actions: ACTIONS, refreshAll, edit, addAssetToTimeline, addTitle, splitSelected, toggleFullscreen };
   init();

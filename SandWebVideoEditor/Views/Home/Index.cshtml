@@ -11,34 +11,34 @@
         </div>
         <a class="navbar-brand fw-bold text-white" href="#"><img src="~/favicon2.ico" alt="Logo" class="navbar-brand" width="80px" height="80px" />Sand Web Video Editor</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                aria-expanded="false" aria-label="Toggle navigation">
+                aria-expanded="false" aria-label="Alternar navegação" data-i18n-attr="aria-label:nav.toggle">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav me-auto">
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle text-white" href="#" id="menuArquivo" role="button" data-bs-toggle="dropdown">Arquivo</a>
+                    <a class="nav-link dropdown-toggle text-white" href="#" id="menuArquivo" role="button" data-bs-toggle="dropdown" data-i18n="menu.file">Arquivo</a>
                     <ul class="dropdown-menu" data-bs-theme="dark" style="background: #000000; background: linear-gradient(153deg,rgba(0, 0, 0, 1) 0%, rgba(48, 48, 48, 1) 78%);">
-                        <li><a class="dropdown-item" href="#" data-action="novoProjeto">Novo Projeto</a></li>
-                        <li><a class="dropdown-item" href="#" data-action="abrirProjeto">Abrir Projeto</a></li>
-                        <li><a class="dropdown-item" href="#" data-action="salvarProjeto">Salvar Projeto</a></li>
+                        <li><a class="dropdown-item" href="#" data-action="novoProjeto" data-i18n="menu.new">Novo Projeto</a></li>
+                        <li><a class="dropdown-item" href="#" data-action="abrirProjeto" data-i18n="menu.open">Abrir Projeto</a></li>
+                        <li><a class="dropdown-item" href="#" data-action="salvarProjeto" data-i18n="menu.save">Salvar Projeto</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="#" data-action="exportarVideo">Exportar Vídeo</a></li>
+                        <li><a class="dropdown-item" href="#" data-action="exportarVideo" data-i18n="menu.export">Exportar Vídeo</a></li>
                     </ul>
                 </li>
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle text-white" href="#" id="menuEditar" role="button" data-bs-toggle="dropdown">Editar</a>
+                    <a class="nav-link dropdown-toggle text-white" href="#" id="menuEditar" role="button" data-bs-toggle="dropdown" data-i18n="menu.edit">Editar</a>
                     <ul class="dropdown-menu" data-bs-theme="dark" style="background: #000000; background: linear-gradient(153deg,rgba(0, 0, 0, 1) 0%, rgba(48, 48, 48, 1) 78%);">
-                        <li><a class="dropdown-item" href="#" data-action="desfazer">Desfazer (Ctrl+Z)</a></li>
-                        <li><a class="dropdown-item" href="#" data-action="refazer">Refazer (Ctrl+Y)</a></li>
+                        <li><a class="dropdown-item" href="#" data-action="desfazer" data-i18n="menu.undo">Desfazer (Ctrl+Z)</a></li>
+                        <li><a class="dropdown-item" href="#" data-action="refazer" data-i18n="menu.redo">Refazer (Ctrl+Y)</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="#" data-action="copiarItem">Copiar (Ctrl+C)</a></li>
-                        <li><a class="dropdown-item" href="#" data-action="colarItem">Colar (Ctrl+V)</a></li>
-                        <li><a class="dropdown-item" href="#" data-action="recortarItem">Recortar (Ctrl+X)</a></li>
-                        <li><a class="dropdown-item" href="#" data-action="excluirItem">Excluir (Del)</a></li>
+                        <li><a class="dropdown-item" href="#" data-action="copiarItem" data-i18n="menu.copy">Copiar (Ctrl+C)</a></li>
+                        <li><a class="dropdown-item" href="#" data-action="colarItem" data-i18n="menu.paste">Colar (Ctrl+V)</a></li>
+                        <li><a class="dropdown-item" href="#" data-action="recortarItem" data-i18n="menu.cut">Recortar (Ctrl+X)</a></li>
+                        <li><a class="dropdown-item" href="#" data-action="excluirItem" data-i18n="menu.delete">Excluir (Del)</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="#" data-action="dividirItem">Dividir no cursor (S)</a></li>
-                        <li><a class="dropdown-item" href="#" data-action="telaCheia">Tela cheia (F)</a></li>
+                        <li><a class="dropdown-item" href="#" data-action="dividirItem" data-i18n="menu.split">Dividir no cursor (S)</a></li>
+                        <li><a class="dropdown-item" href="#" data-action="telaCheia" data-i18n="menu.fullscreen">Tela cheia (F)</a></li>
                     </ul>
                 </li>
             </ul>
@@ -53,14 +53,14 @@
     <div class="row">
         <div class="col-md-3 p-3 border rounded text-white" style="background: #000000; background: linear-gradient(153deg,rgba(0, 0, 0, 1) 0%, rgba(48, 48, 48, 1) 78%);">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <h6 class="m-0">Coleção de Mídia</h6>
+                <h6 class="m-0" data-i18n="coll.title">Coleção de Mídia</h6>
                 <div class="btn-group btn-group-sm">
-                    <button class="btn btn-outline-primary" data-action="adicionarTitulo">+ Título</button>
+                    <button class="btn btn-outline-primary" data-action="adicionarTitulo" data-i18n="coll.addTitle">+ Título</button>
                 </div>
             </div>
             <input type="file" id="imageUpload" class="d-none" accept=".png,.jpg,.jpeg,.webp,.bmp" multiple />
             <input type="file" id="mediaUpload" class="form-control mb-1 form-control-sm" accept="video/*,audio/*,.png,.jpg,.jpeg,.webp,.bmp" multiple />
-            <p style="font-size: 0.7rem;">Envie arquivos de vídeo (.mp4, .mov, .mkv, .webm e .avi), áudio (.mp3, .wav, .m4a, .aac e .ogg) ou imagem (.png, .jpg, .jpeg, .webp e .bmp) para adicionar à coleção.</p>
+            <p style="font-size: 0.7rem;" data-i18n="coll.help">Envie arquivos de vídeo (.mp4, .mov, .mkv, .webm e .avi), áudio (.mp3, .wav, .m4a, .aac e .ogg) ou imagem (.png, .jpg, .jpeg, .webp e .bmp) para adicionar à coleção.</p>
             <div id="uploadStatus" class="small text-white mb-2"></div>
             <div id="mediaList" class="d-flex flex-wrap gap-2 overflow-auto" style="max-height: 320px;"></div>
         </div>
@@ -70,16 +70,16 @@
                 <div id="stage" class="stage">
                     <div id="stageVideos" class="stage-videos"></div>
                     <div id="stageTitles" class="stage-titles"></div>
-                    <div id="stageEmpty" class="stage-empty">Envie mídias e clique em <b>+</b> para montar a timeline</div>
+                    <div id="stageEmpty" class="stage-empty" data-i18n-html="stage.empty">Envie mídias e clique em <b>+</b> para montar a timeline</div>
                 </div>
                 <div class="player-bar">
-                    <button id="btnStart" class="btn btn-sm btn-outline-light" aria-label="Voltar ao início" title="Início (Home)"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-skip-backward-fill" viewBox="0 0 16 16">
+                    <button id="btnStart" class="btn btn-sm btn-outline-light" aria-label="Voltar ao início" title="Início (Home)" data-i18n-attr="aria-label:player.start;title:player.startTitle"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-skip-backward-fill" viewBox="0 0 16 16">
     <path d="M.5 3.5A.5.5 0 0 0 0 4v8a.5.5 0 0 0 1 0V8.753l6.267 3.636c.54.313 1.233-.066 1.233-.697v-2.94l6.267 3.636c.54.314 1.233-.065 1.233-.696V4.308c0-.63-.693-1.01-1.233-.696L8.5 7.248v-2.94c0-.63-.692-1.01-1.233-.696L1 7.248V4a.5.5 0 0 0-.5-.5"/>
     </svg></button>
-                    <button id="btnPlay" class="btn btn-sm btn-light" aria-label="Reproduzir" title="Reproduzir / pausar (Espaço)"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-play-fill" viewBox="0 0 16 16">
+                    <button id="btnPlay" class="btn btn-sm btn-light" aria-label="Reproduzir" title="Reproduzir / pausar (Espaço)" data-i18n-attr="title:player.playTitle"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-play-fill" viewBox="0 0 16 16">
     <path d="m11.596 8.697-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393"/>
     </svg></button>
-                    <input id="seekBar" type="range" class="form-range" min="0" max="1000" step="1" value="0" aria-label="Posição">
+                    <input id="seekBar" type="range" class="form-range" min="0" max="1000" step="1" value="0" aria-label="Posição" data-i18n-attr="aria-label:player.seek">
                     <span id="timeLabel" class="time-label">00:00.0 / 00:00.0</span>
                     <button id="btnFullscreen" class="btn btn-sm btn-outline-light" data-action="telaCheia" aria-label="Tela cheia" title="Tela cheia (F)"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-fullscreen" viewBox="0 0 16 16">
   <path d="M1.5 1a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4A1.5 1.5 0 0 1 1.5 0h4a.5.5 0 0 1 0 1zM10 .5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 16 1.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5M.5 10a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 0 14.5v-4a.5.5 0 0 1 .5-.5m15 0a.5.5 0 0 1 .5.5v4a1.5 1.5 0 0 1-1.5 1.5h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5"/>
@@ -89,125 +89,125 @@
         </div>
 
         <div class="col-md-3 p-3 border rounded text-white" style="background: #000000; background: linear-gradient(153deg,rgba(0, 0, 0, 1) 0%, rgba(48, 48, 48, 1) 78%);">
-            <h6>Propriedades do Item</h6>
+            <h6 data-i18n="props.title">Propriedades do Item</h6>
             <div id="clipProperties" class="d-none">
                 <div class="mb-2">
-                    <label class="form-label small" for="propTimelineStart">Entrada na Timeline (s):</label>
+                    <label class="form-label small" for="propTimelineStart" data-i18n="props.start">Entrada na Timeline (s):</label>
                     <input type="number" id="propTimelineStart" class="form-control form-control-sm" min="0" step="0.1">
                 </div>
                 <div class="mb-2">
-                    <label class="form-label small" for="propDuration">Duração (s):</label>
+                    <label class="form-label small" for="propDuration" data-i18n="props.duration">Duração (s):</label>
                     <input type="number" id="propDuration" class="form-control form-control-sm" min="0.2" step="0.1">
                 </div>
 
                 <div id="panelAudioTrack" class="d-none">
                     <div class="mb-2">
-                        <label class="form-label small" for="propAudioTrack">Trilha:</label>
+                        <label class="form-label small" for="propAudioTrack" data-i18n="props.track">Trilha:</label>
                         <select id="propAudioTrack" class="form-select form-select-sm">
-                            <option value="0">Primeira Trilha de Áudio/Música</option>
-                            <option value="1">Segunda Trilha de Áudio/Música</option>
+                            <option value="0" data-i18n="audio.track1">Primeira Trilha de Áudio/Música</option>
+                            <option value="1" data-i18n="audio.track2">Segunda Trilha de Áudio/Música</option>
                         </select>
                     </div>
                 </div>
 
                 <div id="panelVolume" class="d-none">
                     <div class="mb-2">
-                        <label class="form-label small" for="propVolume">Volume: <span id="lblVolume">100%</span></label>
+                        <label class="form-label small" for="propVolume"><span data-i18n="props.volume">Volume:</span> <span id="lblVolume">100%</span></label>
                         <input type="range" id="propVolume" class="form-range" min="0" max="2" step="0.05">
                     </div>
                     <div class="mb-2 form-check">
                         <input type="checkbox" class="form-check-input" id="propMute">
-                        <label class="form-check-label small" for="propMute">Mudo</label>
+                        <label class="form-check-label small" for="propMute" data-i18n="props.mute">Mudo</label>
                     </div>
                 </div>
 
                 <div id="panelVideo" class="d-none">
                     <div class="mb-2">
-                        <label class="form-label small" for="propEffect">Efeito Visual:</label>
+                        <label class="form-label small" for="propEffect" data-i18n="props.effect">Efeito Visual:</label>
                         <select id="propEffect" class="form-select form-select-sm">
-                            <option value="none">Nenhum</option>
-                            <option value="grayscale">Preto e Branco</option>
-                            <option value="sepia">Sépia</option>
-                            <option value="bright">Brilho Aumentado</option>
-                            <option value="blur">Desfoque</option>
-                            <option value="negate">Negativo</option>
+                            <option value="none" data-i18n="fx.none">Nenhum</option>
+                            <option value="grayscale" data-i18n="fx.grayscale">Preto e Branco</option>
+                            <option value="sepia" data-i18n="fx.sepia">Sépia</option>
+                            <option value="bright" data-i18n="fx.bright">Brilho Aumentado</option>
+                            <option value="blur" data-i18n="fx.blur">Desfoque</option>
+                            <option value="negate" data-i18n="fx.negate">Negativo</option>
                         </select>
                     </div>
                     <div class="mb-2">
-                        <label class="form-label small" for="propTransition">Transição de entrada:</label>
+                        <label class="form-label small" for="propTransition" data-i18n="props.transition">Transição de entrada:</label>
                         <select id="propTransition" class="form-select form-select-sm">
-                            <option value="">Nenhuma</option>
-                            <option value="fade">Dissolver</option>
-                            <option value="fadeblack">Fade pelo preto</option>
-                            <option value="wipeleft">Cortina pra Esquerda</option>
-                            <option value="wiperight">Cortina pra Direita</option>
-                            <option value="slideleft">Deslizar pra Esquerda</option>
-                            <option value="slideright">Deslizar pra Direita</option>
-                            <option value="circleopen">Círculo</option>
-                            <option value="pixelize">Pixelizar</option>
+                            <option value="" data-i18n="tr.none">Nenhuma</option>
+                            <option value="fade" data-i18n="tr.fade">Dissolver</option>
+                            <option value="fadeblack" data-i18n="tr.fadeblack">Fade pelo preto</option>
+                            <option value="wipeleft" data-i18n="tr.wipeleft">Cortina pra Esquerda</option>
+                            <option value="wiperight" data-i18n="tr.wiperight">Cortina pra Direita</option>
+                            <option value="slideleft" data-i18n="tr.slideleft">Deslizar pra Esquerda</option>
+                            <option value="slideright" data-i18n="tr.slideright">Deslizar pra Direita</option>
+                            <option value="circleopen" data-i18n="tr.circleopen">Círculo</option>
+                            <option value="pixelize" data-i18n="tr.pixelize">Pixelizar</option>
                         </select>
-                        <label class="form-label small mt-1" for="propTransitionDur">Duração: <span id="lblTransitionDur">1.0 s</span></label>
+                        <label class="form-label small mt-1" for="propTransitionDur"><span data-i18n="props.transitionDuration">Duração:</span> <span id="lblTransitionDur">1.0 s</span></label>
                         <input type="range" id="propTransitionDur" class="form-range" min="0.2" max="3" step="0.1">
                     </div>
-                    <button id="btnDetach" class="btn btn-sm btn-primary w-100 mt-2" data-action="separarAudio">Separar Áudio do Vídeo</button>
+                    <button id="btnDetach" class="btn btn-sm btn-primary w-100 mt-2" data-action="separarAudio" data-i18n="props.detach">Separar Áudio do Vídeo</button>
                 </div>
 
                 <div id="panelText" class="d-none">
                     <div class="mb-2">
-                        <label class="form-label small" for="propText">Texto:</label>
+                        <label class="form-label small" for="propText" data-i18n="props.text">Texto:</label>
                         <input type="text" id="propText" class="form-control form-control-sm" maxlength="500">
                     </div>
                     <div class="row g-2 mb-2">
                         <div class="col-6">
-                            <label class="form-label small" for="propFontSize">Tamanho:</label>
+                            <label class="form-label small" for="propFontSize" data-i18n="props.size">Tamanho:</label>
                             <input type="number" id="propFontSize" class="form-control form-control-sm" min="10" max="200" step="2">
                         </div>
                         <div class="col-6">
-                            <label class="form-label small" for="propFontColor">Cor:</label>
+                            <label class="form-label small" for="propFontColor" data-i18n="props.color">Cor:</label>
                             <select id="propFontColor" class="form-select form-select-sm">
-                                <option value="white">Branco</option>
-                                <option value="yellow">Amarelo</option>
-                                <option value="red">Vermelho</option>
-                                <option value="cyan">Ciano</option>
-                                <option value="lime">Verde</option>
-                                <option value="orange">Laranja</option>
+                                <option value="white" data-i18n="color.white">Branco</option>
+                                <option value="yellow" data-i18n="color.yellow">Amarelo</option>
+                                <option value="red" data-i18n="color.red">Vermelho</option>
+                                <option value="cyan" data-i18n="color.cyan">Ciano</option>
+                                <option value="lime" data-i18n="color.lime">Verde</option>
+                                <option value="orange" data-i18n="color.orange">Laranja</option>
                             </select>
                         </div>
                     </div>
                     <div class="mb-2">
-                        <label class="form-label small" for="propTextPos">Posição:</label>
+                        <label class="form-label small" for="propTextPos" data-i18n="props.position">Posição:</label>
                         <select id="propTextPos" class="form-select form-select-sm">
-                            <option value="top">Topo</option>
-                            <option value="center">Centro</option>
-                            <option value="bottom">Rodapé</option>
+                            <option value="top" data-i18n="pos.top">Topo</option>
+                            <option value="center" data-i18n="pos.center">Centro</option>
+                            <option value="bottom" data-i18n="pos.bottom">Rodapé</option>
                         </select>
                     </div>
                 </div>
             </div>
-            <p id="noSelectionMsg" class="small">Selecione um item na timeline para editar.</p>
+            <p id="noSelectionMsg" class="small" data-i18n="props.none">Selecione um item na timeline para editar.</p>
         </div>
     </div>
 
     <div class="row mt-3">
         <div class="col-12 p-3 border text-white rounded" style="background: #000000; background: linear-gradient(153deg,rgba(0, 0, 0, 1) 0%, rgba(48, 48, 48, 1) 78%);">
             <div class="d-flex align-items-center gap-2 mb-2">
-                <h6 class="mb-0">Timeline</h6>
+                <h6 class="mb-0" data-i18n="timeline.title">Timeline</h6>
                 <button id="btnSplit" class="btn btn-sm btn-outline-light" data-action="dividirItem" title="Dividir o clipe selecionado no cursor (S)"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-vr" viewBox="0 0 16 16">
   <path d="M3 12V4a1 1 0 0 1 1-1h2.5V2H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2.5v-1H4a1 1 0 0 1-1-1m6.5 1v1H12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H9.5v1H12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1zM8 16a.5.5 0 0 1-.5-.5V.5a.5.5 0 0 1 1 0v15a.5.5 0 0 1-.5.5"/>
-</svg> Dividir</button>
-                <span class="small ms-auto">Zoom</span>
-                <input type="range" id="zoomRange" class="form-range" min="8" max="80" step="2" value="20" style="width:120px" aria-label="Zoom da timeline">
+</svg> <span data-i18n="timeline.split">Dividir</span></button>
+                <span class="small ms-auto" data-i18n="timeline.zoom">Zoom</span>
+                <input type="range" id="zoomRange" class="form-range" min="8" max="80" step="2" value="20" style="width:120px" aria-label="Zoom da timeline" data-i18n-attr="aria-label:timeline.zoomAria">
             </div>
             <div id="timelineScroll" class="timeline-scroll">
                 <div id="timelineInner" class="timeline-inner">
                     <div id="ruler" class="ruler"></div>
-                    <small class="track-label fw-bold">Vídeo / Imagem</small>
+                    <small class="track-label fw-bold" data-i18n="timeline.trackVideo">Vídeo / Imagem</small>
                     <div id="trackVideo" class="track-container" style="height: 50px;"></div>
-                    <small class="track-label fw-bold">Áudio / Música 1</small>
+                    <small class="track-label fw-bold" data-i18n="timeline.trackAudio1">Áudio / Música 1</small>
                     <div id="trackAudio" class="track-container" style="height: 50px;"></div>
-                    <small class="track-label fw-bold">Áudio / Música 2</small>
+                    <small class="track-label fw-bold" data-i18n="timeline.trackAudio2">Áudio / Música 2</small>
                     <div id="trackAudio2" class="track-container" style="height: 50px;"></div>
-                    <small class="track-label fw-bold">Títulos / Texto</small>
+                    <small class="track-label fw-bold" data-i18n="timeline.trackText">Títulos / Texto</small>
                     <div id="trackText" class="track-container" style="height: 50px;"></div>
                     <div id="playhead" class="playhead"></div>
                 </div>
@@ -220,13 +220,13 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content text-white" style="background: #000000; background: linear-gradient(153deg,rgba(0, 0, 0, 1) 0%, rgba(48, 48, 48, 1) 78%);">
             <div class="modal-header">
-                <h5 class="modal-title" id="exportTitle">Exportar vídeo</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                <h5 class="modal-title" id="exportTitle" data-i18n="export.title">Exportar vídeo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar" data-i18n-attr="aria-label:export.close"></button>
             </div>
             <div class="modal-body">
                 <div class="d-flex flex-wrap align-items-end gap-2 mb-3">
                     <div>
-                        <label class="form-label small" for="exportHeight">Resolução</label>
+                        <label class="form-label small" for="exportHeight" data-i18n="export.resolution">Resolução</label>
                         <select id="exportHeight" class="form-select form-select-sm">
                             <option value="480">480p</option>
                             <option value="720" selected>720p (HD)</option>
@@ -237,16 +237,16 @@
                     </div>
                     
                     <div class="flex-grow-1">
-                        <label class="form-label small" for="exportFileName">Nome do arquivo</label>
+                        <label class="form-label small" for="exportFileName" data-i18n="export.fileName">Nome do arquivo</label>
                         <div class="input-group input-group-sm">
-                            <input type="text" id="exportFileName" class="form-control" maxlength="100" placeholder="video-editado" autocomplete="off" spellcheck="false" aria-describedby="exportFileHint">
+                            <input type="text" id="exportFileName" class="form-control" maxlength="100" placeholder="video-editado" autocomplete="off" spellcheck="false" aria-describedby="exportFileHint" data-i18n-attr="placeholder:export.defaultName">
                             <span class="input-group-text">.mp4</span>
                         </div>
                     </div>
 
-                    <button id="btnStartExport" class="btn btn-primary btn-sm" data-action="iniciarExportacao">Exportar</button>
+                    <button id="btnStartExport" class="btn btn-primary btn-sm" data-action="iniciarExportacao" data-i18n="export.start">Exportar</button>
                 </div>
-                <p style="font-size: 0.7rem;" id="resolutionWarning">AVISO: Exportar em resolução maior pode fazer o processo de exportação demorar mais e pode resultar em tamanho maior de arquivo em vídeo.</p>
+                <p style="font-size: 0.7rem;" id="resolutionWarning" data-i18n="export.warning">AVISO: Exportar em resolução maior pode fazer o processo de exportação demorar mais e pode resultar em tamanho maior de arquivo em vídeo.</p>
                 <div id="exportFileHint" class="small text-white-50 mb-3" aria-live="polite"></div>
                 <div id="exportProgress" class="progress mb-3 d-none" style="height: 24px;">
                     <div id="exportBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%">0%</div>
@@ -254,7 +254,7 @@
                 <div id="exportError" class="alert alert-danger d-none"></div>
                 <div id="exportResult" class="d-none">
                     <video id="exportVideo" controls class="w-100 bg-black rounded"></video>
-                    <a id="exportDownload" class="btn btn-outline-primary btn-sm mt-2" download>Baixar MP4</a>
+                    <a id="exportDownload" class="btn btn-outline-primary btn-sm mt-2" download data-i18n="export.download">Baixar MP4</a>
                 </div>
             </div>
         </div>
@@ -264,6 +264,7 @@
 <div id="toast" class="alert alert-info shadow d-none" role="status" aria-live="polite"></div>
 
 @section Scripts {
+    <script src="~/js/editor-i18n.js" asp-append-version="true"></script>
     <script src="~/js/editor-core.js" asp-append-version="true"></script>
     <script src="~/js/editor-preview.js" asp-append-version="true"></script>
     <script src="~/js/editor-app.js" asp-append-version="true"></script>
