@@ -17,7 +17,7 @@ O Sand Web Video Editor é um aplicativo de edição de vídeo feito para rodar 
 
 # Demonstração de Vídeo feito em Sand Web Video Editor
 
-https://github.com/user-attachments/assets/34ecfeea-9863-4c85-9125-437f803f4d00
+https://github.com/user-attachments/assets/30eb807c-343b-4d00-9423-450c06843b46
 
 ## Créditos
 
