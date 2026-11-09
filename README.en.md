@@ -1,6 +1,6 @@
-![logo](https://github.com/joao003/Sand-Web-Video-Editor/blob/main/sandwebvideoeditorlogoalt.png)
+**English** | [Português](https://github.com/joao003/Sand-Web-Video-Editor/blob/main/README.md)
 
-# English Version
+![logo](https://github.com/joao003/Sand-Web-Video-Editor/blob/main/sandwebvideoeditorlogoalt.png)
 
 Sand Web Video Editor is a video editing application designed to run directly in the web browser without requiring any installation.
 
